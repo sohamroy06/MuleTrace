@@ -1,0 +1,1641 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MuleTrace — Financial Crime Investigation Platform</title>
+<script src="vendor/cytoscape.min.js"></script>
+<script src="vendor/chart.umd.min.js"></script>
+<style>
+/* ============================================================
+   GLOBAL STYLES — Dark investigative-ops theme
+   ============================================================ */
+:root {
+  --bg-primary: #0F1419;
+  --bg-secondary: #1A1F2E;
+  --bg-tertiary: #242B3D;
+  --border: #2D3748;
+  --text-primary: #E8EAED;
+  --text-secondary: #9AA0A6;
+  --text-muted: #5F6368;
+  --accent: #4A9EFF;
+  --accent-hover: #6BB3FF;
+  --risk-critical: #E53E3E;
+  --risk-high: #ED8936;
+  --risk-medium: #ECC94B;
+  --risk-low: #48BB78;
+  --taint-100: #E53E3E;
+  --taint-85: #E8634A;
+  --taint-70: #ED8936;
+  --taint-55: #ECC94B;
+  --taint-40: #A8D84A;
+  --taint-25: #48BB78;
+  --success: #48BB78;
+  --warning: #ECC94B;
+  --danger: #E53E3E;
+  --sidebar-w: 220px;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family:'Segoe UI',system-ui,-apple-system,sans-serif; background:var(--bg-primary); color:var(--text-primary); font-size:13px; line-height:1.5; overflow-x:hidden; }
+::-webkit-scrollbar { width:6px; height:6px; }
+::-webkit-scrollbar-track { background:var(--bg-secondary); }
+::-webkit-scrollbar-thumb { background:var(--border); border-radius:3px; }
+
+/* ---- Sidebar ---- */
+#sidebar { position:fixed; left:0; top:0; bottom:0; width:var(--sidebar-w); background:var(--bg-secondary); border-right:1px solid var(--border); display:flex; flex-direction:column; z-index:100; }
+.sidebar-logo { padding:16px 20px; font-size:18px; font-weight:700; color:var(--accent); border-bottom:1px solid var(--border); letter-spacing:1px; }
+.sidebar-nav { flex:1; padding:12px 8px; overflow-y:auto; }
+.nav-item { display:flex; align-items:center; gap:10px; padding:10px 14px; border-radius:6px; cursor:pointer; color:var(--text-secondary); font-size:12px; transition:all .15s; margin-bottom:2px; }
+.nav-item:hover { background:var(--bg-tertiary); color:var(--text-primary); }
+.nav-item.active { background:var(--accent); color:#fff; font-weight:600; }
+.nav-item .nav-num { width:20px; height:20px; border-radius:4px; background:var(--bg-tertiary); display:flex; align-items:center; justify-content:center; font-size:10px; font-weight:700; flex-shrink:0; }
+.nav-item.active .nav-num { background:rgba(255,255,255,.2); }
+.sidebar-footer { padding:12px; border-top:1px solid var(--border); font-size:10px; color:var(--text-muted); text-align:center; }
+
+/* ---- Main Content ---- */
+#main { margin-left:var(--sidebar-w); min-height:100vh; display:flex; flex-direction:column; }
+#topbar { display:flex; align-items:center; padding:10px 24px; border-bottom:1px solid var(--border); background:var(--bg-secondary); gap:12px; position:sticky; top:0; z-index:50; }
+#topbar .search-box { flex:1; display:flex; align-items:center; background:var(--bg-tertiary); border:1px solid var(--border); border-radius:6px; padding:6px 12px; gap:8px; }
+#topbar .search-box input { background:none; border:none; color:var(--text-primary); outline:none; font-size:12px; width:100%; }
+#topbar .case-select { background:var(--bg-tertiary); border:1px solid var(--border); border-radius:6px; padding:6px 12px; color:var(--text-primary); font-size:12px; cursor:pointer; }
+.screen { display:none; padding:24px; flex:1; }
+.screen.active { display:block; }
+
+/* ---- Common Components ---- */
+.card { background:var(--bg-secondary); border:1px solid var(--border); border-radius:8px; padding:16px; }
+.card-title { font-size:12px; font-weight:600; color:var(--text-secondary); text-transform:uppercase; letter-spacing:.5px; margin-bottom:12px; display:flex; align-items:center; gap:8px; }
+.kpi-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-bottom:16px; }
+.kpi-card { background:var(--bg-secondary); border:1px solid var(--border); border-radius:8px; padding:16px; text-align:center; }
+.kpi-val { font-size:32px; font-weight:700; color:var(--text-primary); }
+.kpi-label { font-size:11px; color:var(--text-secondary); margin-top:4px; }
+.chip { display:inline-block; padding:2px 10px; border-radius:12px; font-size:10px; font-weight:700; letter-spacing:.3px; }
+.chip-critical { background:rgba(229,62,62,.15); color:var(--risk-critical); border:1px solid rgba(229,62,62,.3); }
+.chip-high { background:rgba(237,137,54,.15); color:var(--risk-high); border:1px solid rgba(237,137,54,.3); }
+.chip-medium { background:rgba(236,201,75,.15); color:var(--risk-medium); border:1px solid rgba(236,201,75,.3); }
+.chip-low { background:rgba(72,187,120,.15); color:var(--risk-low); border:1px solid rgba(72,187,120,.3); }
+.badge-indicative { display:inline-block; padding:1px 6px; border:1px solid var(--warning); border-radius:3px; font-size:9px; color:var(--warning); background:rgba(236,201,75,.08); margin-left:4px; }
+.badge-locked { display:flex; align-items:center; gap:8px; padding:8px 12px; border:1px dashed var(--border); border-radius:6px; font-size:11px; color:var(--text-muted); background:var(--bg-tertiary); margin:8px 0; }
+.badge-locked .draft-btn { margin-left:auto; }
+.btn { display:inline-flex; align-items:center; gap:6px; padding:6px 14px; border-radius:6px; font-size:11px; font-weight:600; cursor:pointer; border:1px solid var(--border); background:var(--bg-tertiary); color:var(--text-primary); transition:all .15s; }
+.btn:hover { background:var(--border); }
+.btn-primary { background:var(--accent); border-color:var(--accent); color:#fff; }
+.btn-primary:hover { background:var(--accent-hover); }
+.btn-sm { padding:4px 10px; font-size:10px; }
+table.data-table { width:100%; border-collapse:collapse; font-size:11px; }
+table.data-table th { background:var(--bg-tertiary); padding:8px 10px; text-align:left; font-weight:600; color:var(--text-secondary); border-bottom:2px solid var(--border); position:sticky; top:0; }
+table.data-table td { padding:7px 10px; border-bottom:1px solid var(--border); color:var(--text-primary); }
+table.data-table tr:hover td { background:var(--bg-tertiary); }
+table.data-table tr.flagged td { border-left:3px solid var(--risk-critical); }
+.grid-2 { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+.grid-3 { display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px; }
+.flex { display:flex; gap:12px; }
+.flex-1 { flex:1; }
+.mb-12 { margin-bottom:12px; }
+.mb-16 { margin-bottom:16px; }
+.mt-8 { margin-top:8px; }
+.text-sm { font-size:11px; }
+.text-xs { font-size:10px; }
+.text-muted { color:var(--text-muted); }
+
+/* Synthetic banner */
+#synthetic-banner { background:rgba(236,201,75,.1); border-top:1px solid rgba(236,201,75,.3); padding:6px 24px; text-align:center; font-size:11px; color:var(--warning); position:sticky; bottom:0; z-index:50; margin-left:0; }
+
+/* Replay controls */
+.replay-panel { display:flex; align-items:center; gap:12px; padding:12px 16px; background:var(--bg-tertiary); border:1px solid var(--border); border-radius:8px; }
+.replay-panel .speed-slider { width:80px; }
+.replay-panel .progress { flex:1; height:6px; background:var(--border); border-radius:3px; overflow:hidden; cursor:pointer; }
+.replay-panel .progress-fill { height:100%; background:var(--accent); transition:width .3s; }
+.replay-label { font-size:9px; color:var(--text-muted); padding:2px 6px; border:1px solid var(--border); border-radius:3px; }
+
+/* Risk gauge */
+.gauge-container { width:140px; text-align:center; }
+.gauge-arc { width:120px; height:60px; border:8px solid var(--border); border-bottom:none; border-radius:60px 60px 0 0; margin:0 auto; display:flex; align-items:flex-end; justify-content:center; padding-bottom:4px; }
+.gauge-val { font-size:28px; font-weight:700; }
+
+/* Evidence row */
+.evidence-row { background:var(--bg-tertiary); border-left:3px solid var(--accent); padding:6px 10px; font-size:10px; margin:4px 0; border-radius:0 4px 4px 0; }
+
+/* Adapters */
+.adapter-card { flex:1; background:var(--bg-tertiary); border:1px solid var(--border); border-radius:8px; padding:12px; text-align:center; }
+.adapter-icon { width:40px; height:40px; border:1px solid var(--border); border-radius:8px; margin:0 auto 8px; display:flex; align-items:center; justify-content:center; font-size:16px; font-weight:700; color:var(--accent); }
+.dot { width:8px; height:8px; border-radius:50%; display:inline-block; margin-right:4px; }
+.dot-on { background:var(--success); }
+.dot-off { background:var(--text-muted); }
+
+/* Dropzone */
+.dropzone { border:2px dashed var(--border); border-radius:12px; padding:40px; text-align:center; color:var(--text-muted); cursor:pointer; transition:all .2s; }
+.dropzone:hover { border-color:var(--accent); color:var(--accent); }
+.dropzone.active { border-color:var(--success); color:var(--success); }
+
+/* Drawer */
+.side-drawer { width:280px; background:var(--bg-secondary); border-left:1px solid var(--border); padding:16px; overflow-y:auto; flex-shrink:0; border-radius:0 8px 8px 0; }
+
+/* Modal */
+.modal-overlay { display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,.7); z-index:200; justify-content:center; align-items:center; }
+.modal-overlay.show { display:flex; }
+.modal { background:var(--bg-secondary); border:1px solid var(--border); border-radius:12px; padding:24px; max-width:600px; width:90%; max-height:80vh; overflow-y:auto; }
+.modal h3 { margin-bottom:12px; }
+.modal p { font-size:12px; color:var(--text-secondary); margin-bottom:8px; }
+.modal-close { float:right; cursor:pointer; color:var(--text-muted); font-size:18px; }
+
+/* Toast */
+.toast { position:fixed; bottom:60px; right:24px; background:var(--success); color:#fff; padding:10px 20px; border-radius:8px; font-size:12px; font-weight:600; z-index:300; transform:translateY(100px); opacity:0; transition:all .3s; }
+.toast.show { transform:translateY(0); opacity:1; }
+
+/* Timeline */
+.timeline-container { position:relative; background:var(--bg-tertiary); border-radius:8px; padding:16px; }
+.timeline-axis { height:1px; background:var(--border); position:relative; margin:30px 0; }
+.timeline-event { position:absolute; bottom:0; transform:translateX(-50%); }
+.timeline-dot { width:10px; height:10px; border-radius:50%; border:2px solid; cursor:pointer; }
+.timeline-label-top { position:absolute; bottom:14px; transform:translateX(-50%); font-size:9px; white-space:nowrap; color:var(--text-secondary); }
+.caveat-panel { background:rgba(236,201,75,.08); border:1px solid rgba(236,201,75,.2); border-radius:8px; padding:12px; font-size:11px; color:var(--warning); }
+
+/* Tabs */
+.tab-bar { display:flex; border-bottom:1px solid var(--border); margin-bottom:12px; }
+.tab-item { padding:8px 16px; font-size:12px; cursor:pointer; color:var(--text-muted); border-bottom:2px solid transparent; transition:all .15s; }
+.tab-item.active { color:var(--accent); border-bottom-color:var(--accent); }
+.tab-item:hover { color:var(--text-primary); }
+
+/* Tooltip */
+.tooltip-trigger { position:relative; cursor:help; }
+.tooltip-trigger:hover .tooltip-content { display:block; }
+.tooltip-content { display:none; position:absolute; bottom:100%; left:50%; transform:translateX(-50%); background:var(--bg-primary); border:1px solid var(--border); border-radius:6px; padding:10px; font-size:10px; width:280px; z-index:100; color:var(--text-secondary); }
+
+/* Template textarea */
+.template-area { width:100%; min-height:100px; background:var(--bg-tertiary); border:1px solid var(--border); border-radius:6px; padding:10px; font-size:11px; font-family:monospace; color:var(--text-primary); resize:vertical; }
+
+/* Print styles */
+@media print {
+  #sidebar, #topbar, #synthetic-banner, .replay-panel, .btn { display:none !important; }
+  #main { margin-left:0 !important; }
+  .screen.active { padding:12px; }
+}
+
+/* Responsive */
+@media (max-width:1024px) {
+  .kpi-grid { grid-template-columns:repeat(2,1fr); }
+  .grid-2 { grid-template-columns:1fr; }
+}
+</style>
+</head>
+<body>
+
+<!-- ============================================================
+     SIDEBAR NAVIGATION
+     ============================================================ -->
+<nav id="sidebar">
+  <div class="sidebar-logo">MuleTrace</div>
+  <div class="sidebar-nav">
+    <div class="nav-item active" data-screen="dashboard"><span class="nav-num">1</span>Watchlist Dashboard</div>
+    <div class="nav-item" data-screen="ledger"><span class="nav-num">2</span>Ingestion &amp; Ledger</div>
+    <div class="nav-item" data-screen="risk"><span class="nav-num">3</span>Mule Risk Analysis</div>
+    <div class="nav-item" data-screen="moneygraph"><span class="nav-num">4</span>Money-Trail Graph</div>
+    <div class="nav-item" data-screen="domain"><span class="nav-num">5</span>Domain &amp; IP Intel</div>
+    <div class="nav-item" data-screen="timeline"><span class="nav-num">6</span>Timestamp Correlation</div>
+    <div class="nav-item" data-screen="relgraph"><span class="nav-num">7</span>Relationship Graph</div>
+    <div class="nav-item" data-screen="reports"><span class="nav-num">8</span>Reports &amp; Requests</div>
+  </div>
+  <div class="sidebar-footer">
+    <div style="margin-bottom:4px;cursor:pointer;" onclick="showModal('datasources')">Data Sources &amp; Limits</div>
+    v1.0 Prototype
+  </div>
+</nav>
+
+<!-- ============================================================
+     TOP BAR
+     ============================================================ -->
+<div id="main">
+<div id="topbar">
+  <div class="search-box">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+    <input type="text" id="globalSearch" placeholder="Search accounts, UTRs, domains, IPs, phones..." onkeydown="if(event.key==='Enter')handleGlobalSearch()">
+  </div>
+  <select class="case-select" id="caseSelect" onchange="filterByCase(this.value)">
+    <option value="all">All Cases</option>
+    <option value="CASE-A">Case A (CASE-2024-A-0417)</option>
+    <option value="CASE-B">Case B (CASE-2024-B-0523)</option>
+  </select>
+</div>
+
+<!-- ============================================================
+     SCREEN 1: WATCHLIST DASHBOARD
+     ============================================================ -->
+<div class="screen active" id="screen-dashboard">
+  <div class="kpi-grid" id="kpi-grid">
+    <div class="kpi-card"><div class="kpi-val" id="kpi-accounts">14</div><div class="kpi-label">Accounts Monitored</div></div>
+    <div class="kpi-card"><div class="kpi-val" id="kpi-alerts">7</div><div class="kpi-label">Active Alerts</div></div>
+    <div class="kpi-card"><div class="kpi-val" id="kpi-cases">2</div><div class="kpi-label">Open Cases</div></div>
+    <div class="kpi-card"><div class="kpi-val" id="kpi-infra">3</div><div class="kpi-label">Linked Infrastructure</div></div>
+  </div>
+
+  <div class="flex mb-16">
+    <div class="flex-1">
+      <div class="card" style="height:220px;overflow-y:auto;">
+        <div class="card-title">Live Alert Feed</div>
+        <div id="alert-feed"></div>
+      </div>
+    </div>
+    <div style="width:300px;">
+      <div class="card" style="height:220px;">
+        <div class="card-title">Replay Simulator</div>
+        <div class="replay-panel" style="flex-direction:column;align-items:stretch;gap:8px;">
+          <div style="display:flex;gap:8px;justify-content:center;">
+            <button class="btn btn-primary" id="replay-play" onclick="toggleReplay()">Play</button>
+            <button class="btn" onclick="resetReplay()">Reset</button>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;">
+            <span class="text-xs text-muted">Speed:</span>
+            <input type="range" min="1" max="10" value="3" class="speed-slider" id="replay-speed" style="flex:1;">
+            <span class="text-xs" id="replay-speed-label">3x</span>
+          </div>
+          <div class="progress" onclick="seekReplay(event)"><div class="progress-fill" id="replay-progress" style="width:0%"></div></div>
+          <div style="display:flex;justify-content:space-between;">
+            <span class="text-xs text-muted" id="replay-day">Day 0 / 60</span>
+            <span class="replay-label">Simulated feed (synthetic)</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card mb-16">
+    <div class="card-title">Watchlist</div>
+    <div style="overflow-x:auto;">
+      <table class="data-table" id="watchlist-table">
+        <thead><tr>
+          <th style="cursor:pointer" onclick="sortWatchlist('id')">Account</th>
+          <th>Bank</th>
+          <th>Case</th>
+          <th style="cursor:pointer" onclick="sortWatchlist('riskScore')">Risk Score</th>
+          <th>Last Activity</th>
+          <th>Status</th>
+        </tr></thead>
+        <tbody id="watchlist-body"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Input Adapters</div>
+    <div class="flex">
+      <div class="adapter-card"><div class="adapter-icon">PDF</div><div class="text-xs">PDF / Excel Upload</div><div class="mt-8"><span class="dot dot-on"></span><span class="text-xs">Ready</span></div></div>
+      <div class="adapter-card"><div class="adapter-icon">CSV</div><div class="text-xs">CSV / SFTP Drop</div><div class="mt-8"><span class="dot dot-off"></span><span class="text-xs">Not configured</span></div></div>
+      <div class="adapter-card"><div class="adapter-icon">API</div><div class="text-xs">API / Webhook</div><div class="mt-8"><span class="dot dot-off"></span><span class="text-xs">Not configured</span></div></div>
+      <div class="adapter-card" style="flex:2;text-align:left;"><div class="text-xs text-muted" style="padding:12px;">Production: data arrives from banks via lawful requests. The adapters above accept data in standard formats once received through the applicable lawful process.</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
+     SCREEN 2: INGESTION & NORMALISED LEDGER
+     ============================================================ -->
+<div class="screen" id="screen-ledger">
+  <div class="flex mb-16">
+    <div class="flex-1">
+      <div class="dropzone" id="upload-dropzone" onclick="simulateUpload()" ondragover="event.preventDefault();this.classList.add('active')" ondragleave="this.classList.remove('active')" ondrop="event.preventDefault();this.classList.remove('active');simulateUpload()">
+        <div style="font-size:28px;margin-bottom:8px;">+</div>
+        Drag &amp; drop PDF / Excel statement here, or click to browse
+      </div>
+    </div>
+    <div style="width:260px;">
+      <div class="card">
+        <div class="card-title">Adapter Status</div>
+        <div class="text-sm" style="padding:4px 0;"><span class="dot dot-on"></span> PDF/Excel — Ready</div>
+        <div class="text-sm" style="padding:4px 0;"><span class="dot dot-off"></span> CSV/SFTP — Not configured</div>
+        <div class="text-sm" style="padding:4px 0;"><span class="dot dot-off"></span> API/Webhook — Not configured</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title" style="justify-content:space-between;">
+      <span>Normalised Transaction Ledger</span>
+      <span class="text-xs text-muted" id="ledger-count"></span>
+    </div>
+    <div class="flex mb-12" style="flex-wrap:wrap;gap:8px;">
+      <select class="case-select" id="ledger-acct-filter" onchange="renderLedger()"><option value="all">All Accounts</option></select>
+      <select class="case-select" id="ledger-type-filter" onchange="renderLedger()"><option value="all">All Types</option><option value="CR">Credit</option><option value="DR">Debit</option></select>
+      <input type="text" id="ledger-search" placeholder="Search UTR, narration..." style="background:var(--bg-tertiary);border:1px solid var(--border);border-radius:6px;padding:6px 12px;color:var(--text-primary);font-size:11px;width:200px;" onkeyup="renderLedger()">
+    </div>
+    <div style="overflow-x:auto;max-height:500px;overflow-y:auto;">
+      <table class="data-table" id="ledger-table">
+        <thead><tr>
+          <th>EV-Ref</th><th>Date/Time (IST)</th><th>Dr/Cr</th><th style="text-align:right">Amount (Rs)</th><th style="text-align:right">Balance</th><th>Counterparty</th><th>Account</th><th>UTR</th><th>Narration</th>
+        </tr></thead>
+        <tbody id="ledger-body"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
+     SCREEN 3: MULE RISK ANALYSIS
+     ============================================================ -->
+<div class="screen" id="screen-risk">
+  <div class="flex" style="align-items:flex-start;">
+    <div style="width:280px;flex-shrink:0;">
+      <div class="card-title">Ranked Accounts</div>
+      <div class="card" style="padding:0;" id="risk-account-list"></div>
+    </div>
+    <div class="flex-1">
+      <div class="card" id="risk-drilldown">
+        <div class="text-sm text-muted" style="padding:40px;text-align:center;">Select an account from the list to view detailed risk analysis</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
+     SCREEN 4: MONEY-TRAIL GRAPH
+     ============================================================ -->
+<div class="screen" id="screen-moneygraph">
+  <div class="flex mb-12" style="align-items:center;">
+    <div class="search-box" style="flex:1;background:var(--bg-tertiary);border:1px solid var(--border);border-radius:6px;padding:6px 12px;display:flex;gap:8px;">
+      <input type="text" id="utr-search" placeholder="Enter Victim UTR (e.g. UTR2024041700001)" style="background:none;border:none;color:var(--text-primary);outline:none;font-size:12px;width:100%;" value="UTR2024041700001">
+    </div>
+    <button class="btn btn-primary" onclick="searchUTR()">Search UTR</button>
+  </div>
+
+  <div class="flex" style="align-items:flex-start;">
+    <div class="flex-1">
+      <div class="card" style="padding:0;">
+        <div id="cy-money" style="width:100%;height:480px;"></div>
+      </div>
+      <div class="flex mt-8" style="align-items:center;flex-wrap:wrap;">
+        <span class="text-xs">Hops:</span>
+        <input type="range" min="1" max="6" value="3" id="hop-slider" style="width:120px;" onchange="updateHopDisplay()">
+        <span class="text-xs" id="hop-label">3</span>
+        <button class="btn btn-sm" onclick="expandNextHop()">Expand Next Hop</button>
+        <div style="flex:1;"></div>
+        <button class="btn btn-sm" onclick="setGraphLayout('cose')">Cose</button>
+        <button class="btn btn-sm" onclick="setGraphLayout('breadthfirst')">Hierarchy</button>
+        <button class="btn btn-sm" onclick="setGraphLayout('circle')">Circle</button>
+        <button class="btn btn-sm" onclick="exportGraphPNG()">Export PNG</button>
+      </div>
+      <div class="flex mt-8" style="gap:16px;">
+        <span class="text-xs text-muted">Legend:</span>
+        <span class="text-xs"><span style="display:inline-block;width:12px;height:12px;background:var(--risk-critical);border-radius:50%;vertical-align:middle;"></span> Critical (&gt;0.7)</span>
+        <span class="text-xs"><span style="display:inline-block;width:12px;height:12px;background:var(--risk-high);border-radius:50%;vertical-align:middle;"></span> High (0.5-0.7)</span>
+        <span class="text-xs"><span style="display:inline-block;width:12px;height:12px;background:var(--risk-medium);border-radius:50%;vertical-align:middle;"></span> Medium (0.3-0.5)</span>
+        <span class="text-xs"><span style="display:inline-block;width:12px;height:12px;background:var(--risk-low);border-radius:50%;vertical-align:middle;"></span> Low (&lt;0.3)</span>
+      </div>
+    </div>
+    <div class="side-drawer" id="graph-drawer">
+      <div class="card-title">Node Details</div>
+      <div class="text-sm text-muted">Click a node or edge to view details</div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
+     SCREEN 5: DOMAIN & IP INTELLIGENCE
+     ============================================================ -->
+<div class="screen" id="screen-domain">
+  <div class="tab-bar" id="domain-tabs"></div>
+  <div id="domain-content"></div>
+</div>
+
+<!-- ============================================================
+     SCREEN 6: TIMESTAMP CORRELATION
+     ============================================================ -->
+<div class="screen" id="screen-timeline">
+  <div class="flex mb-12" style="align-items:center;">
+    <h3 style="font-size:16px;">Timestamp Correlation</h3>
+    <div style="flex:1;"></div>
+    <button class="btn btn-sm" id="tz-ist" onclick="setTimezone('IST')" style="background:var(--accent);color:#fff;">IST</button>
+    <button class="btn btn-sm" id="tz-utc" onclick="setTimezone('UTC')">UTC</button>
+  </div>
+  <div class="card mb-16">
+    <div class="card-title">Transaction Events</div>
+    <div id="txn-timeline" style="position:relative;height:120px;"></div>
+  </div>
+  <div class="card mb-16">
+    <div class="card-title">Infrastructure Events</div>
+    <div id="infra-timeline" style="position:relative;height:120px;"></div>
+  </div>
+  <div class="card mb-16">
+    <div class="card-title">Correlation Example</div>
+    <div class="text-sm" style="padding:8px;">
+      <strong>Transaction:</strong> Rs 1,00,000 from Synthetic Victim 01 to Mule A1 at 2024-04-17 10:30 IST<br>
+      <strong>IP Allocation:</strong> 203.0.113.10 assigned to ShadyCloud VPS from 2024-03-15 to present<br>
+      <strong>SSL Certificate:</strong> secure-trade-india.example cert issued 2024-03-16 (1 day after domain registration)<br>
+      <strong>Overlap:</strong> Transaction timestamp falls within IP allocation window and shortly after infrastructure setup<br>
+      <div style="margin-top:8px;padding:8px 12px;background:var(--bg-tertiary);border-radius:6px;border-left:3px solid var(--warning);">
+        This is a lead for further investigation, not proof of a connection. Correlation in time does not establish causation.
+      </div>
+    </div>
+  </div>
+  <div class="caveat-panel">
+    <strong>Dynamic &amp; Shared IP Caveat</strong><br>
+    IP addresses may be dynamically assigned (DHCP) or shared among multiple users (CGNAT, cloud hosting). An IP address at a given time does not definitively identify a single user or device. ISP/hosting provider records obtainable through lawful process may narrow attribution. All IP-based correlations shown here are leads, not conclusions.
+  </div>
+</div>
+
+<!-- ============================================================
+     SCREEN 7: RELATIONSHIP GRAPH (CROSS-CASE)
+     ============================================================ -->
+<div class="screen" id="screen-relgraph">
+  <div class="flex mb-12" style="align-items:center;flex-wrap:wrap;">
+    <h3 style="font-size:16px;">Relationship Graph (Cross-Case)</h3>
+    <div style="flex:1;"></div>
+    <label class="text-xs" style="cursor:pointer;"><input type="checkbox" checked onchange="toggleRelNodeType('account')"> Accounts</label>
+    <label class="text-xs" style="cursor:pointer;"><input type="checkbox" checked onchange="toggleRelNodeType('domain')"> Domains</label>
+    <label class="text-xs" style="cursor:pointer;"><input type="checkbox" checked onchange="toggleRelNodeType('ip')"> IPs</label>
+    <label class="text-xs" style="cursor:pointer;"><input type="checkbox" checked onchange="toggleRelNodeType('phone')"> Phones</label>
+    <label class="text-xs" style="cursor:pointer;"><input type="checkbox" checked onchange="toggleRelNodeType('nameserver')"> Name Servers</label>
+  </div>
+  <div class="flex" style="align-items:flex-start;">
+    <div class="flex-1">
+      <div class="card" style="padding:0;">
+        <div id="cy-rel" style="width:100%;height:500px;"></div>
+      </div>
+    </div>
+    <div class="side-drawer" id="rel-drawer">
+      <div class="card-title">Link Evidence</div>
+      <div class="text-sm text-muted" id="rel-evidence">Click a node or edge to see why entities are linked</div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
+     SCREEN 8: REPORTS & LAWFUL INFORMATION REQUESTS
+     ============================================================ -->
+<div class="screen" id="screen-reports">
+  <div class="flex" style="align-items:flex-start;">
+    <div class="flex-1">
+      <div class="card mb-16">
+        <div class="card-title">Report Preview — CASE-2024-A-0417</div>
+        <div id="report-preview" style="background:var(--bg-tertiary);border-radius:8px;padding:20px;"></div>
+      </div>
+      <div class="flex mb-16" style="gap:8px;">
+        <button class="btn btn-primary" onclick="downloadPDF()">Download PDF (Print)</button>
+        <button class="btn btn-primary" onclick="downloadExcel()">Download Excel (CSV)</button>
+      </div>
+    </div>
+    <div style="width:420px;flex-shrink:0;">
+      <div class="card">
+        <div class="card-title">Auto-Drafted Information Requests <span class="chip chip-medium" style="font-size:9px;">Good-to-have</span></div>
+        <div class="mb-12">
+          <div class="text-sm" style="font-weight:600;margin-bottom:4px;">To: Bank (re: Account ACC-02)</div>
+          <textarea class="template-area" id="tmpl-bank">To: The Branch Manager, PNB [Branch]
+Subject: Request for account information — CASE-2024-A-0417
+
+Account Number: ACC-02 (Mule A1)
+Period of Interest: 2024-04-15 to 2024-05-15
+Time Zone: IST (UTC+5:30)
+
+Requested Information:
+1. Complete account holder details and KYC documents
+2. Transaction records for the specified period
+3. Account opening documents
+4. IP/device login records for the specified period
+
+This request is made in connection with investigation reference CASE-2024-A-0417.</textarea>
+        </div>
+        <div class="mb-12">
+          <div class="text-sm" style="font-weight:600;margin-bottom:4px;">To: Domain Registrar</div>
+          <textarea class="template-area" id="tmpl-registrar">To: PrivacyShield Registrar (Abuse Department)
+Subject: Request for registrant information
+
+Domain: secure-trade-india.example
+Registration Date: 2024-03-15
+Reference Timestamp: 2024-04-17 10:30 IST (UTC+5:30)
+
+Requested: Identity of registrant behind privacy protection for the above domain, including name, address, email, phone number, and payment method used for registration.
+
+Investigation Reference: CASE-2024-A-0417</textarea>
+        </div>
+        <div class="mb-12">
+          <div class="text-sm" style="font-weight:600;margin-bottom:4px;">To: Cloud / Hosting Provider</div>
+          <textarea class="template-area" id="tmpl-hosting">To: ShadyCloud Hosting (AS64500)
+Subject: Request for subscriber information
+
+IP Address: 203.0.113.10
+Exact Timestamp: 2024-04-17 10:30:00 IST (UTC+5:30)
+ASN: AS64500
+
+Requested: Identity of the subscriber/customer who was assigned or using the above IP address at the specified exact date and time, including name, address, email, payment records, and any access/session logs.
+
+Investigation Reference: CASE-2024-A-0417</textarea>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Synthetic data banner -->
+<div id="synthetic-banner">Synthetic demo data only. No real personal data.</div>
+</div>
+
+<!-- Data Sources Modal -->
+<div class="modal-overlay" id="modal-datasources">
+  <div class="modal">
+    <span class="modal-close" onclick="closeModal('datasources')">&times;</span>
+    <h3>Data Sources &amp; Limits</h3>
+    <p><strong>This prototype uses only passive, publicly available intelligence sources:</strong></p>
+    <p>&#8226; <strong>RDAP/WHOIS:</strong> Public domain registration data via standard RDAP protocol</p>
+    <p>&#8226; <strong>DNS:</strong> Public DNS record lookups (A, AAAA, MX, NS, TXT, CNAME)</p>
+    <p>&#8226; <strong>Certificate Transparency:</strong> Public CT log entries for SSL/TLS certificates</p>
+    <p>&#8226; <strong>IP Reputation:</strong> Public threat intelligence feeds and blocklists</p>
+    <p style="margin-top:12px;padding:8px;background:var(--bg-tertiary);border-radius:6px;border-left:3px solid var(--warning);">
+      <strong>No active scanning or probing</strong> of third-party servers is performed. No access to real bank systems. No freezing of accounts. All subscriber, login, KYC and access records are obtainable only through the applicable lawful process.
+    </p>
+    <p style="margin-top:8px;">All geolocation and hosting attribution data is labelled "Indicative" — it does not constitute proof of identity or location.</p>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<!-- ============================================================
+     JAVASCRIPT — DATA + LOGIC
+     ============================================================ -->
+<script>
+/* ============================================================
+   SECTION 1: SYNTHETIC DATA
+   ============================================================ */
+
+const CASES = {
+  'CASE-A': { id:'CASE-2024-A-0417', title:'Fake Investment Platform Fraud', victim:'Synthetic Victim 01', amountDefrauded:485000, complaint:'Victim reported being lured into investing via secure-trade-india.example. Total Rs 4,85,000 transferred.', status:'Open' },
+  'CASE-B': { id:'CASE-2024-B-0523', title:'Fake Trading App Fraud', victim:'Synthetic Victim 02', amountDefrauded:210000, complaint:'Victim reported losses from quickinvest-pro.example trading platform. Total Rs 2,10,000 transferred.', status:'Open' }
+};
+
+const ACCOUNTS = [
+  { id:'ACC-01', label:'Synthetic Victim 01', bank:'SBI', caseId:'CASE-A', role:'Victim', riskScore:5, riskLabel:'Low', upiId:'victim01@sbi', phone:'+91 90000 10001', lastActivity:'2024-04-19', isLegitimate:true, status:'Monitored' },
+  { id:'ACC-02', label:'Mule A1', bank:'PNB', caseId:'CASE-A', role:'Pass-through', riskScore:92, riskLabel:'Critical', upiId:'mulea1@pnb', phone:'+91 90000 10002', lastActivity:'2024-04-17', isLegitimate:false, status:'Flagged', dormantDays:0 },
+  { id:'ACC-03', label:'Mule A2', bank:'HDFC', caseId:'CASE-A', role:'Layering', riskScore:78, riskLabel:'High', upiId:'mulea2@hdfc', phone:'+91 90000 10003', lastActivity:'2024-04-25', isLegitimate:false, status:'Flagged', dormantDays:0 },
+  { id:'ACC-04', label:'Mule A3', bank:'Kotak', caseId:'CASE-A', role:'Fan-in collector', riskScore:85, riskLabel:'Critical', upiId:'mulea3@kotak', phone:'+91 90000 10004', lastActivity:'2024-04-28', isLegitimate:false, status:'Flagged', dormantDays:0 },
+  { id:'ACC-05', label:'Mule A4', bank:'BOB', caseId:'CASE-A', role:'Dormant-reactivated', riskScore:88, riskLabel:'Critical', upiId:'mulea4@bob', phone:'+91 90000 10005', lastActivity:'2024-04-22', isLegitimate:false, status:'Flagged', dormantDays:183 },
+  { id:'ACC-06', label:'Mule A5', bank:'ICICI', caseId:'CASE-A', role:'Consolidator / Cash-out', riskScore:95, riskLabel:'Critical', upiId:'mulea5@icici', phone:'+91 90000 10006', lastActivity:'2024-04-28', isLegitimate:false, status:'Flagged', dormantDays:0 },
+  { id:'ACC-07', label:'Legitimate 01', bank:'SBI', caseId:'CASE-A', role:'Normal', riskScore:12, riskLabel:'Low', upiId:'legit01@sbi', phone:'+91 90000 10007', lastActivity:'2024-05-10', isLegitimate:true, status:'Normal' },
+  { id:'ACC-08', label:'Legitimate 02', bank:'HDFC', caseId:'CASE-A', role:'Normal', riskScore:8, riskLabel:'Low', upiId:'legit02@hdfc', phone:'+91 90000 10008', lastActivity:'2024-05-05', isLegitimate:true, status:'Normal' },
+  { id:'ACC-09', label:'Crypto Exchange Deposit', bank:'Axis', caseId:'CASE-A', role:'Cash-out endpoint', riskScore:70, riskLabel:'High', upiId:'crypto@axis', phone:'+91 90000 10009', lastActivity:'2024-04-28', isLegitimate:false, status:'Under Review' },
+  { id:'ACC-10', label:'Synthetic Victim 02', bank:'HDFC', caseId:'CASE-B', role:'Victim', riskScore:5, riskLabel:'Low', upiId:'victim02@hdfc', phone:'+91 90000 20001', lastActivity:'2024-05-18', isLegitimate:true, status:'Monitored' },
+  { id:'ACC-11', label:'Mule B1', bank:'PNB', caseId:'CASE-B', role:'Pass-through', riskScore:80, riskLabel:'High', upiId:'muleb1@pnb', phone:'+91 90000 20002', lastActivity:'2024-05-20', isLegitimate:false, status:'Flagged' },
+  { id:'ACC-12', label:'Mule B2', bank:'SBI', caseId:'CASE-B', role:'Layering', riskScore:72, riskLabel:'High', upiId:'muleb2@sbi', phone:'+91 90000 20003', lastActivity:'2024-05-22', isLegitimate:false, status:'Flagged' },
+  { id:'ACC-13', label:'Shared Account X', bank:'BOI', caseId:'CASE-A+B', role:'Cross-case link', riskScore:90, riskLabel:'Critical', upiId:'sharedx@boi', phone:'+91 90000 30001', lastActivity:'2024-05-25', isLegitimate:false, status:'Under Review' },
+  { id:'ACC-14', label:'Mule B3', bank:'Canara', caseId:'CASE-B', role:'Cash-out', riskScore:75, riskLabel:'High', upiId:'muleb3@canara', phone:'+91 90000 20004', lastActivity:'2024-05-24', isLegitimate:false, status:'Flagged' }
+];
+
+/* Transaction generator - creates realistic synthetic transactions */
+const TRANSACTIONS = [];
+let txnId = 1;
+let evId = 1;
+function T(day,hour,min,type,amt,bal,from,to,utr,narr,cat,flagged) {
+  const d = new Date(2024,3,17); d.setDate(d.getDate()+day); d.setHours(hour,min,0,0);
+  const dateStr = d.toISOString().slice(0,10)+' '+String(hour).padStart(2,'0')+':'+String(min).padStart(2,'0')+' IST';
+  TRANSACTIONS.push({ id:'TXN-'+String(txnId++).padStart(3,'0'), date:dateStr, dateObj:d, type, amount:amt, balance:bal, from, to, utr:utr||'UTR'+d.toISOString().slice(0,10).replace(/-/g,'')+String(txnId).padStart(5,'0'), narration:narr, category:cat||'transfer', flagged:!!flagged, evidence:flagged?'EV-'+String(evId++).padStart(3,'0'):null, dayIndex:day });
+}
+
+/* Case A: Victim -> Mule A1 (3 payments totaling Rs 4,85,000) */
+T(0,10,30,'DR',100000,45200,'ACC-01','ACC-02','UTR2024041700001','NEFT/INV-SECURE-TRADE/REF001','neft',true);
+T(0,10,30,'CR',100000,102500,'ACC-01','ACC-02','UTR2024041700001','NEFT/FROM VICTIM01/INV','neft',true);
+T(0,14,20,'DR',235000,0,'ACC-01','ACC-02','UTR2024041700002','RTGS/INV-SECURE-TRADE/REF002','rtgs',true);
+T(0,14,20,'CR',235000,337500,'ACC-01','ACC-02','UTR2024041700002','RTGS/FROM VICTIM01','rtgs',true);
+T(2,9,15,'DR',150000,0,'ACC-01','ACC-02','UTR2024041900001','NEFT/INV-SECURE-TRADE/REF003','neft',true);
+T(2,9,15,'CR',150000,487500,'ACC-01','ACC-02','UTR2024041900001','NEFT/FROM VICTIM01','neft',true);
+
+/* Mule A1 rapid forwarding (within 6 min) */
+T(0,10,35,'DR',50000,52500,'ACC-02','ACC-03','UTR2024041700004','RTGS/TRANSFER','rtgs',true);
+T(0,10,36,'DR',30000,22500,'ACC-02','ACC-04','UTR2024041700005','IMPS/PAYMENT','imps',true);
+T(0,10,37,'DR',20000,2500,'ACC-02','ACC-05','UTR2024041700006','UPI/TRANSFER','upi',true);
+T(0,14,24,'DR',100000,237500,'ACC-02','ACC-03','UTR2024041700007','RTGS/TRANSFER','rtgs',true);
+T(0,14,25,'DR',85000,152500,'ACC-02','ACC-04','UTR2024041700008','NEFT/PAYMENT','neft',true);
+T(0,14,26,'DR',50000,102500,'ACC-02','ACC-05','UTR2024041700009','RTGS/TRANSFER','rtgs',true);
+T(2,9,19,'DR',80000,22500,'ACC-02','ACC-03','UTR2024041900003','RTGS/TRANSFER','rtgs',true);
+T(2,9,20,'DR',50000,0,'ACC-02','ACC-05','UTR2024041900004','NEFT/TRANSFER','neft',true);
+T(2,9,21,'DR',20000,2500,'ACC-02','ACC-04','UTR2024041900005','UPI/PAYMENT','upi',true);
+
+/* Credits to receiving accounts */
+T(0,10,35,'CR',50000,52000,'ACC-02','ACC-03','UTR2024041700004','RTGS/FROM PNB','rtgs',true);
+T(0,14,24,'CR',100000,152000,'ACC-02','ACC-03','UTR2024041700007','RTGS/FROM PNB','rtgs',true);
+T(2,9,19,'CR',80000,232000,'ACC-02','ACC-03','UTR2024041900003','RTGS/FROM PNB','rtgs',true);
+T(0,10,36,'CR',30000,32000,'ACC-02','ACC-04','UTR2024041700005','IMPS/FROM PNB','imps',true);
+T(0,14,25,'CR',85000,117000,'ACC-02','ACC-04','UTR2024041700008','NEFT/FROM PNB','neft',true);
+T(2,9,21,'CR',20000,137000,'ACC-02','ACC-04','UTR2024041900005','UPI/FROM PNB','upi',true);
+T(0,10,37,'CR',20000,22000,'ACC-02','ACC-05','UTR2024041700006','UPI/FROM PNB','upi',true);
+T(0,14,26,'CR',50000,72000,'ACC-02','ACC-05','UTR2024041700009','RTGS/FROM PNB','rtgs',true);
+T(2,9,20,'CR',50000,122000,'ACC-02','ACC-05','UTR2024041900004','NEFT/FROM PNB','neft',true);
+
+/* Mule A3 (ACC-04) fan-in: 14 small credits from unrelated senders */
+const fanInNarrations = ['UPI/RECHARGE','UPI/GROCERIES','UPI/BILL-PAY','IMPS/FREELANCE','UPI/SERVICES','NEFT/CONSULT-FEE','UPI/REPAIR-SVC','IMPS/TUITION','UPI/DELIVERY','UPI/MISC-PYMT','NEFT/COMMISSION','UPI/RENTAL','IMPS/WAGES','UPI/HANDYMAN'];
+for(let i=0;i<14;i++){
+  const day=3+Math.floor(i/2);const hr=9+i%6;const amt=2000+Math.floor(Math.random()*6000);
+  T(day,hr,10+i*3,'CR',amt,137000+(i+1)*amt,'UPI-EXT-'+String(i+1).padStart(2,'0'),'ACC-04','UTR2024'+(420+day)+'0'+String(30+i).padStart(2,'0'),fanInNarrations[i],'upi',true);
+}
+
+/* Mule A2 (ACC-03) round-figure layering to ACC-06 */
+T(3,11,0,'DR',50000,182000,'ACC-03','ACC-06','UTR2024042000010','RTGS/SETTLEMENT','rtgs',true);
+T(5,10,0,'DR',100000,82000,'ACC-03','ACC-06','UTR2024042200010','RTGS/SETTLEMENT','rtgs',true);
+T(8,15,0,'DR',50000,32000,'ACC-03','ACC-06','UTR2024042500010','NEFT/CLEARANCE','neft',true);
+T(3,11,0,'CR',50000,55000,'ACC-03','ACC-06','UTR2024042000010','RTGS/FROM HDFC','rtgs',true);
+T(5,10,0,'CR',100000,155000,'ACC-03','ACC-06','UTR2024042200010','RTGS/FROM HDFC','rtgs',true);
+T(8,15,0,'CR',50000,205000,'ACC-03','ACC-06','UTR2024042500010','NEFT/FROM HDFC','neft',true);
+
+/* ACC-04 (Mule A3) sends to ACC-06 */
+T(10,14,0,'DR',100000,37000+14*4000-100000,'ACC-04','ACC-06','UTR2024042700020','RTGS/TRANSFER','rtgs',true);
+T(12,11,0,'DR',50000,37000+14*4000-150000,'ACC-04','ACC-06','UTR2024042900020','NEFT/TRANSFER','neft',true);
+T(10,14,0,'CR',100000,305000,'ACC-04','ACC-06','UTR2024042700020','RTGS/FROM KOTAK','rtgs',true);
+T(12,11,0,'CR',50000,355000,'ACC-04','ACC-06','UTR2024042900020','NEFT/FROM KOTAK','neft',true);
+
+/* ACC-05 (Mule A4 dormant reactivated) sends to ACC-06 */
+T(5,16,0,'DR',50000,72000,'ACC-05','ACC-06','UTR2024042200030','RTGS/TRANSFER','rtgs',true);
+T(8,12,0,'DR',42000,30000,'ACC-05','ACC-06','UTR2024042500030','NEFT/TRANSFER','neft',true);
+T(5,16,0,'CR',50000,405000,'ACC-05','ACC-06','UTR2024042200030','RTGS/FROM BOB','rtgs',true);
+T(8,12,0,'CR',42000,447000,'ACC-05','ACC-06','UTR2024042500030','NEFT/FROM BOB','neft',true);
+
+/* ACC-06 (Mule A5) cash-out */
+T(11,10,0,'DR',200000,247000,'ACC-06','ATM','UTR2024042800040','ATM/CASH-WDL/MUMBAI','atm',true);
+T(11,14,0,'DR',150000,97000,'ACC-06','ACC-09','UTR2024042800041','NEFT/CRYPTO-EXCHANGE-DEPOSIT','neft',true);
+T(11,14,0,'CR',150000,152000,'ACC-06','ACC-09','UTR2024042800041','NEFT/FROM ICICI/CRYPTO','neft',true);
+/* ACC-06 also sends to shared account */
+T(13,11,30,'DR',50000,47000,'ACC-06','ACC-13','UTR2024043000042','RTGS/TRANSFER','rtgs',true);
+T(13,11,30,'CR',50000,52000,'ACC-06','ACC-13','UTR2024043000042','RTGS/FROM ICICI','rtgs',true);
+
+/* Case B: Victim 02 -> Mule B1 */
+T(30,11,0,'DR',120000,30000,'ACC-10','ACC-11','UTR2024051700050','NEFT/QUICKINVEST-PRO/REF001','neft',true);
+T(30,11,0,'CR',120000,122000,'ACC-10','ACC-11','UTR2024051700050','NEFT/FROM HDFC','neft',true);
+T(32,10,0,'DR',90000,0,'ACC-10','ACC-11','UTR2024051900051','RTGS/QUICKINVEST-PRO/REF002','rtgs',true);
+T(32,10,0,'CR',90000,212000,'ACC-10','ACC-11','UTR2024051900051','RTGS/FROM HDFC','rtgs',true);
+
+/* Mule B1 -> Mule B2 and Shared X */
+T(30,11,30,'DR',70000,52000,'ACC-11','ACC-12','UTR2024051700055','RTGS/TRANSFER','rtgs',true);
+T(30,11,30,'CR',70000,72000,'ACC-11','ACC-12','UTR2024051700055','RTGS/FROM PNB','rtgs',true);
+T(30,11,45,'DR',50000,2000,'ACC-11','ACC-13','UTR2024051700056','NEFT/TRANSFER','neft',true);
+T(30,11,45,'CR',50000,102000,'ACC-11','ACC-13','UTR2024051700056','NEFT/FROM PNB','neft',true);
+T(32,10,20,'DR',90000,122000,'ACC-11','ACC-12','UTR2024051900057','RTGS/TRANSFER','rtgs',true);
+T(32,10,20,'CR',90000,162000,'ACC-11','ACC-12','UTR2024051900057','RTGS/FROM PNB','rtgs',true);
+
+/* Mule B2 -> Mule B3 (cash out) */
+T(33,14,0,'DR',100000,62000,'ACC-12','ACC-14','UTR2024052000060','NEFT/SETTLEMENT','neft',true);
+T(33,14,0,'CR',100000,102000,'ACC-12','ACC-14','UTR2024052000060','NEFT/FROM SBI','neft',true);
+T(35,10,0,'DR',50000,12000,'ACC-12','ACC-14','UTR2024052200061','RTGS/CLEARANCE','rtgs',true);
+T(35,10,0,'CR',50000,152000,'ACC-12','ACC-14','UTR2024052200061','RTGS/FROM SBI','rtgs',true);
+/* B3 ATM cashout */
+T(36,16,0,'DR',120000,32000,'ACC-14','ATM','UTR2024052300070','ATM/CASH-WDL/JAIPUR','atm',true);
+
+/* Legitimate account transactions (ACC-07 and ACC-08) */
+const legitNarr7 = ['SALARY/APR-2024','UPI/GROCERY-STORE','UPI/ELECTRICITY-BILL','NEFT/RENT-APR','UPI/MOBILE-RECHARGE','UPI/RESTAURANT','NEFT/INSURANCE-PREMIUM','UPI/PETROL-PUMP','UPI/MEDICAL-STORE','UPI/SUBSCRIPTION','SALARY/MAY-2024','UPI/GROCERY-STORE','NEFT/RENT-MAY','UPI/ELECTRICITY-BILL','UPI/SHOPPING'];
+for(let i=0;i<15;i++){
+  const day=i*4; const isCredit=i%5===0;
+  T(day,isCredit?9:Math.floor(10+Math.random()*8),Math.floor(Math.random()*50),isCredit?'CR':'DR',isCredit?45000:1000+Math.floor(Math.random()*4000),isCredit?48000:48000-(i+1)*2000,'ACC-07',isCredit?'SALARY':'UPI-MERCHANT','UTR2024'+String(417+day)+'00'+String(80+i),legitNarr7[i],isCredit?'neft':'upi',false);
+}
+const legitNarr8 = ['SALARY/APR-2024','UPI/BIGBASKET','EMI/HOME-LOAN','UPI/FLIPKART','UPI/ZOMATO','NEFT/SIP-INVESTMENT','UPI/ELECTRICITY','UPI/WATER-BILL','SALARY/MAY-2024','UPI/AMAZON','EMI/HOME-LOAN','UPI/SWIGGY','UPI/GAS-BILL','NEFT/MUTUAL-FUND','UPI/PHARMACY'];
+for(let i=0;i<15;i++){
+  const day=i*4; const isCredit=i%4===0;
+  T(day,isCredit?9:Math.floor(10+Math.random()*8),Math.floor(Math.random()*50),isCredit?'CR':'DR',isCredit?62000:2000+Math.floor(Math.random()*8000),isCredit?65000:65000-(i+1)*3000,'ACC-08',isCredit?'SALARY':'UPI-MERCHANT','UTR2024'+String(417+day)+'00'+String(95+i),legitNarr8[i],isCredit?'neft':'upi',false);
+}
+
+/* Sort transactions by date */
+TRANSACTIONS.sort((a,b) => a.dayIndex - b.dayIndex || a.dateObj - b.dateObj);
+
+/* Domain / IP data */
+const DOMAINS = [
+  {
+    domain:'secure-trade-india.example', ip:'203.0.113.10', asn:'AS64500', asnName:'ShadyCloud Hosting',
+    registrar:'PrivacyShield Registrar', reseller:'BulkDomains Reseller', created:'2024-03-15', expires:'2025-03-15', privacyProtected:true,
+    dns:{ A:'203.0.113.10', AAAA:'(none)', MX:'mail.secure-trade-india.example', NS:'ns1.shady-hosting.example, ns2.shady-hosting.example', TXT:'v=spf1 include:_spf.shady-hosting.example ~all', CNAME:'(none)' },
+    ssl:[{ issuer:"Let's Encrypt Authority X3", validFrom:'2024-03-16', validTo:'2024-06-14', serial:'03:AB:CD:EF:12:34:56' }],
+    ctLog:'2024-03-16 02:15 UTC',
+    subdomains:['app.secure-trade-india.example','api.secure-trade-india.example','admin.secure-trade-india.example'],
+    relatedDomains:['payment-gateway-verify.example (same ASN AS64500)'],
+    ipOwnership:{ org:'ShadyCloud VPS Pvt Ltd', isp:'ShadyCloud Hosting', region:'Mumbai, MH', country:'IN', reverseDns:'vps-10.shadycloud.example', ipv4:'203.0.113.10', ipv6:'(none)', torVpnProxy:{ flag:false, source:'Public threat feed' } },
+    nameservers:['ns1.shady-hosting.example','ns2.shady-hosting.example'],
+    caseId:'CASE-A'
+  },
+  {
+    domain:'quickinvest-pro.example', ip:'198.51.100.22', asn:'AS64501', asnName:'BulkHost Services',
+    registrar:'BulkDomains Reseller', reseller:'N/A', created:'2024-04-20', expires:'2025-04-20', privacyProtected:true,
+    dns:{ A:'198.51.100.22', AAAA:'(none)', MX:'mail.quickinvest-pro.example', NS:'ns1.shady-hosting.example, ns2.shady-hosting.example', TXT:'v=spf1 ~all', CNAME:'(none)' },
+    ssl:[{ issuer:"Let's Encrypt Authority X3", validFrom:'2024-04-21', validTo:'2024-07-20', serial:'04:CD:EF:AB:56:78:90' }],
+    ctLog:'2024-04-21 05:30 UTC',
+    subdomains:['app.quickinvest-pro.example','trade.quickinvest-pro.example'],
+    relatedDomains:['secure-trade-india.example (shared nameserver)'],
+    ipOwnership:{ org:'BulkHost Data Center', isp:'BulkHost Services', region:'Delhi, DL', country:'IN', reverseDns:'node-22.bulkhost.example', ipv4:'198.51.100.22', ipv6:'(none)', torVpnProxy:{ flag:false, source:'Public threat feed' } },
+    nameservers:['ns1.shady-hosting.example','ns2.shady-hosting.example'],
+    caseId:'CASE-B'
+  },
+  {
+    domain:'payment-gateway-verify.example', ip:'203.0.113.45', asn:'AS64500', asnName:'ShadyCloud Hosting',
+    registrar:'PrivacyShield Registrar', reseller:'BulkDomains Reseller', created:'2024-03-18', expires:'2025-03-18', privacyProtected:true,
+    dns:{ A:'203.0.113.45', AAAA:'(none)', MX:'(none)', NS:'ns1.shady-hosting.example, ns2.shady-hosting.example', TXT:'(none)', CNAME:'(none)' },
+    ssl:[{ issuer:"Let's Encrypt Authority X3", validFrom:'2024-03-19', validTo:'2024-06-17', serial:'05:EF:AB:CD:90:12:34' }],
+    ctLog:'2024-03-19 03:45 UTC',
+    subdomains:['verify.payment-gateway-verify.example'],
+    relatedDomains:['secure-trade-india.example (same registrar, ASN)'],
+    ipOwnership:{ org:'ShadyCloud VPS Pvt Ltd', isp:'ShadyCloud Hosting', region:'Mumbai, MH', country:'IN', reverseDns:'vps-45.shadycloud.example', ipv4:'203.0.113.45', ipv6:'(none)', torVpnProxy:{ flag:true, source:'Public VPN blocklist (indicative)' } },
+    nameservers:['ns1.shady-hosting.example','ns2.shady-hosting.example'],
+    caseId:'CASE-A'
+  }
+];
+
+const INFRA_EVENTS = [
+  { date:'2024-03-15', type:'domain_reg', label:'Domain registered: secure-trade-india.example', domain:'secure-trade-india.example' },
+  { date:'2024-03-16', type:'ssl_cert', label:'SSL cert issued: secure-trade-india.example', domain:'secure-trade-india.example' },
+  { date:'2024-03-18', type:'domain_reg', label:'Domain registered: payment-gateway-verify.example', domain:'payment-gateway-verify.example' },
+  { date:'2024-03-19', type:'ssl_cert', label:'SSL cert issued: payment-gateway-verify.example', domain:'payment-gateway-verify.example' },
+  { date:'2024-04-10', type:'dns_change', label:'DNS A record changed: 203.0.113.10', domain:'secure-trade-india.example' },
+  { date:'2024-04-20', type:'domain_reg', label:'Domain registered: quickinvest-pro.example', domain:'quickinvest-pro.example' },
+  { date:'2024-04-21', type:'ssl_cert', label:'SSL cert issued: quickinvest-pro.example', domain:'quickinvest-pro.example' },
+  { date:'2024-05-05', type:'ip_seen', label:'New IP 198.51.100.22 seen for quickinvest-pro.example', domain:'quickinvest-pro.example' }
+];
+
+const ALERTS = [
+  { id:'ALT-001', timestamp:'2024-04-17 10:42', accountId:'ACC-02', type:'Rapid In-Out', message:'100% of received funds forwarded within 6 minutes', severity:'Critical', caseId:'CASE-A', dayIndex:0 },
+  { id:'ALT-002', timestamp:'2024-04-17 14:30', accountId:'ACC-02', type:'Pass-through', message:'Pass-through ratio exceeds 95%', severity:'Critical', caseId:'CASE-A', dayIndex:0 },
+  { id:'ALT-003', timestamp:'2024-04-22 10:00', accountId:'ACC-05', type:'Dormant Reactivation', message:'Account dormant 183 days, now 5 transactions in 3 days', severity:'Critical', caseId:'CASE-A', dayIndex:5 },
+  { id:'ALT-004', timestamp:'2024-04-25 15:00', accountId:'ACC-03', type:'Round-Figure Layering', message:'3 consecutive round-figure transfers (Rs 50K, 1L, 50K)', severity:'High', caseId:'CASE-A', dayIndex:8 },
+  { id:'ALT-005', timestamp:'2024-04-28 14:00', accountId:'ACC-04', type:'Fan-In Unrelated', message:'14 small credits from 14 different unrelated senders', severity:'Critical', caseId:'CASE-A', dayIndex:11 },
+  { id:'ALT-006', timestamp:'2024-04-28 14:30', accountId:'ACC-06', type:'Consolidation', message:'Receives funds from 3 flagged accounts; score now 95', severity:'Critical', caseId:'CASE-A', dayIndex:11 },
+  { id:'ALT-007', timestamp:'2024-04-28 16:00', accountId:'ACC-06', type:'Cash-out', message:'Rs 2,00,000 ATM withdrawal + Rs 1,50,000 to crypto exchange', severity:'Critical', caseId:'CASE-A', dayIndex:11 },
+  { id:'ALT-008', timestamp:'2024-05-17 12:00', accountId:'ACC-11', type:'Pass-through', message:'Rs 1,20,000 forwarded within 30 min of receipt', severity:'High', caseId:'CASE-B', dayIndex:30 },
+  { id:'ALT-009', timestamp:'2024-05-25 12:00', accountId:'ACC-13', type:'Cross-Case', message:'Account linked to both Case A and Case B', severity:'Critical', caseId:'CASE-A+B', dayIndex:38 },
+  { id:'ALT-010', timestamp:'2024-04-28 10:00', accountId:'ACC-09', type:'Crypto Deposit', message:'Rs 1,50,000 deposited to crypto exchange account', severity:'High', caseId:'CASE-A', dayIndex:11 }
+];
+
+const RISK_RULES = [
+  { id:'R1', name:'Pass-through Ratio', weight:25, description:'Percentage of incoming funds forwarded within 60 minutes' },
+  { id:'R2', name:'Fan-in Unrelated Senders', weight:20, description:'Credits from >5 unrelated senders within 7 days' },
+  { id:'R3', name:'Round-figure Layering', weight:15, description:'>50% of outgoing transactions are round amounts (multiples of Rs 10,000)' },
+  { id:'R4', name:'Dormant Reactivation', weight:20, description:'Account inactive >90 days then >3 transactions in 7 days' },
+  { id:'R5', name:'Repeated Counterparty', weight:10, description:'Same beneficiary appears in >2 linked mule accounts' },
+  { id:'R6', name:'Anomaly Deviation', weight:10, description:'Supporting signal — behaviour deviation from account baseline (transaction frequency, amount patterns)' }
+];
+
+const RULE_TRIGGERS = {
+  'ACC-02': [
+    { ruleId:'R1', score:25, reason:'100% of received Rs 4,85,000 forwarded within 6 minutes to 3 accounts', evidence:['TXN-007','TXN-008','TXN-009','TXN-010','TXN-011','TXN-012'] },
+    { ruleId:'R3', score:11, reason:'60% of outgoing transfers are round figures (Rs 50,000, Rs 1,00,000)', evidence:['TXN-007','TXN-010'] },
+    { ruleId:'R4', score:18, reason:'Account became extremely active — 9 outgoing transfers in 2 days vs typical 1/month', evidence:['TXN-007','TXN-008','TXN-009','TXN-010','TXN-011','TXN-012','TXN-013','TXN-014','TXN-015'] },
+    { ruleId:'R5', score:10, reason:'ACC-03, ACC-04, ACC-05 all received funds — matching a fan-out pattern', evidence:['TXN-007','TXN-008','TXN-009'] },
+    { ruleId:'R6', score:5, reason:'Baseline: <2 txns/month. Current: 15 in 3 days (deviation 750%)', evidence:[] }
+  ],
+  'ACC-03': [
+    { ruleId:'R3', score:15, reason:'100% of outgoing transfers are exact round figures (Rs 50,000, Rs 1,00,000)', evidence:['TXN-034','TXN-036','TXN-038'] },
+    { ruleId:'R1', score:18, reason:'87% of incoming funds forwarded to ACC-06 within days', evidence:['TXN-034','TXN-036','TXN-038'] },
+    { ruleId:'R5', score:10, reason:'ACC-06 is the sole outgoing counterparty', evidence:['TXN-034','TXN-036','TXN-038'] },
+    { ruleId:'R6', score:7, reason:'Activity spike — 6 high-value transfers in 8 days vs baseline of 0', evidence:[] }
+  ],
+  'ACC-04': [
+    { ruleId:'R2', score:20, reason:'14 small credits (Rs 2,000-8,000) from 14 unrelated senders in 7 days', evidence:['TXN-025','TXN-026','TXN-027','TXN-028','TXN-029','TXN-030','TXN-031'] },
+    { ruleId:'R1', score:18, reason:'Collected funds consolidated and forwarded to ACC-06', evidence:['TXN-040','TXN-042'] },
+    { ruleId:'R5', score:10, reason:'ACC-06 appears as sole beneficiary of consolidated funds', evidence:['TXN-040','TXN-042'] },
+    { ruleId:'R6', score:6, reason:'Transaction volume 14x above historical average', evidence:[] }
+  ],
+  'ACC-05': [
+    { ruleId:'R4', score:20, reason:'Account dormant for 183 days, then 5 transactions in 5 days', evidence:['TXN-023','TXN-024','TXN-025'] },
+    { ruleId:'R1', score:20, reason:'76% of received funds forwarded to ACC-06', evidence:['TXN-046','TXN-048'] },
+    { ruleId:'R5', score:10, reason:'ACC-06 is sole outgoing counterparty, also receives from ACC-03, ACC-04', evidence:['TXN-046','TXN-048'] },
+    { ruleId:'R6', score:8, reason:'Dormant-to-active is the strongest behavioural anomaly', evidence:[] }
+  ],
+  'ACC-06': [
+    { ruleId:'R5', score:10, reason:'Receives from ACC-03, ACC-04, ACC-05 — repeated as consolidation point', evidence:['TXN-035','TXN-041','TXN-047'] },
+    { ruleId:'R1', score:25, reason:'Incoming funds consolidated then cashed out via ATM and crypto exchange', evidence:['TXN-050','TXN-052'] },
+    { ruleId:'R3', score:15, reason:'ATM withdrawal Rs 2,00,000 and crypto deposit Rs 1,50,000 — round figures', evidence:['TXN-050','TXN-052'] },
+    { ruleId:'R4', score:15, reason:'Activity spike during consolidation window', evidence:[] },
+    { ruleId:'R6', score:10, reason:'Highest deviation from baseline — cash-out velocity extreme', evidence:[] }
+  ],
+  'ACC-09': [
+    { ruleId:'R1', score:15, reason:'Large deposit from flagged account ACC-06', evidence:['TXN-053'] },
+    { ruleId:'R3', score:12, reason:'Rs 1,50,000 round-figure deposit', evidence:['TXN-053'] },
+    { ruleId:'R6', score:5, reason:'First-time large inbound from individual account', evidence:[] }
+  ],
+  'ACC-11': [
+    { ruleId:'R1', score:22, reason:'85% forwarded within 30 minutes to ACC-12 and ACC-13', evidence:['TXN-060','TXN-062'] },
+    { ruleId:'R5', score:8, reason:'ACC-13 (Shared Account X) also linked to Case A', evidence:['TXN-062'] },
+    { ruleId:'R6', score:6, reason:'Sudden high-value activity', evidence:[] }
+  ],
+  'ACC-12': [
+    { ruleId:'R1', score:20, reason:'Most funds forwarded to ACC-14', evidence:['TXN-068','TXN-070'] },
+    { ruleId:'R3', score:12, reason:'Round figure transfers Rs 1,00,000 and Rs 50,000', evidence:['TXN-068','TXN-070'] },
+    { ruleId:'R6', score:5, reason:'Activity deviation from baseline', evidence:[] }
+  ],
+  'ACC-13': [
+    { ruleId:'R5', score:10, reason:'Receives funds from both Case A (ACC-06) and Case B (ACC-11) — cross-case link', evidence:['TXN-055','TXN-063'] },
+    { ruleId:'R1', score:22, reason:'Pass-through pattern — funds received and held', evidence:[] },
+    { ruleId:'R4', score:15, reason:'Account became active during both fraud windows', evidence:[] },
+    { ruleId:'R6', score:8, reason:'Dual-case involvement is highest anomaly signal', evidence:[] }
+  ],
+  'ACC-14': [
+    { ruleId:'R1', score:18, reason:'Funds received and cashed out via ATM', evidence:['TXN-074'] },
+    { ruleId:'R3', score:12, reason:'ATM withdrawal Rs 1,20,000', evidence:['TXN-074'] },
+    { ruleId:'R6', score:5, reason:'First ATM cash-out of this magnitude', evidence:[] }
+  ]
+};
+
+/* ============================================================
+   SECTION 2: STATE
+   ============================================================ */
+let replayRunning = false;
+let replayDay = 0;
+let replayInterval = null;
+let replayMaxDay = 60;
+let cyMoney = null;
+let cyRel = null;
+let currentHops = 3;
+let currentTimezone = 'IST';
+let sortField = 'riskScore';
+let sortAsc = false;
+let visibleTransactions = [];
+let relNodeTypes = { account:true, domain:true, ip:true, phone:true, nameserver:true };
+
+/* ============================================================
+   SECTION 3: UTILITY FUNCTIONS
+   ============================================================ */
+function fmt(n) { return new Intl.NumberFormat('en-IN').format(n); }
+function riskColor(label) {
+  const m = { Critical:'var(--risk-critical)', High:'var(--risk-high)', Medium:'var(--risk-medium)', Low:'var(--risk-low)' };
+  return m[label] || 'var(--text-muted)';
+}
+function chipClass(label) {
+  return 'chip chip-'+label.toLowerCase();
+}
+function getAccount(id) { return ACCOUNTS.find(a=>a.id===id); }
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'), 2500);
+}
+function showModal(id) { document.getElementById('modal-'+id).classList.add('show'); }
+function closeModal(id) { document.getElementById('modal-'+id).classList.remove('show'); }
+
+/* ============================================================
+   SECTION 4: NAVIGATION
+   ============================================================ */
+document.querySelectorAll('.nav-item').forEach(item => {
+  item.addEventListener('click', () => {
+    document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+    document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+    item.classList.add('active');
+    const screenId = 'screen-'+item.dataset.screen;
+    document.getElementById(screenId).classList.add('active');
+    /* Init screens on first visit */
+    if(item.dataset.screen==='moneygraph' && !cyMoney) initMoneyGraph();
+    if(item.dataset.screen==='relgraph' && !cyRel) initRelGraph();
+    if(item.dataset.screen==='domain') renderDomainScreen();
+    if(item.dataset.screen==='timeline') renderTimeline();
+    if(item.dataset.screen==='reports') renderReportPreview();
+  });
+});
+
+/* ============================================================
+   SECTION 5: SCREEN 1 — DASHBOARD
+   ============================================================ */
+function renderAlertFeed(maxDay) {
+  const feed = document.getElementById('alert-feed');
+  const filtered = maxDay!==undefined ? ALERTS.filter(a=>a.dayIndex<=maxDay) : ALERTS;
+  feed.innerHTML = filtered.sort((a,b)=>b.dayIndex-a.dayIndex).map(a=>{
+    const acc = getAccount(a.accountId);
+    return `<div style="padding:6px 0;border-bottom:1px solid var(--border);font-size:11px;display:flex;align-items:center;gap:8px;">
+      <span class="${chipClass(a.severity)}">${a.severity.toUpperCase()}</span>
+      <span style="color:var(--text-muted);font-size:10px;">${a.timestamp}</span>
+      <strong>${a.accountId}</strong> ${acc?acc.label:''} — ${a.message}
+    </div>`;
+  }).join('');
+}
+
+function renderWatchlist(maxDay) {
+  const tbody = document.getElementById('watchlist-body');
+  let accts = [...ACCOUNTS];
+  if(sortField) accts.sort((a,b)=> sortAsc ? (a[sortField]>b[sortField]?1:-1) : (b[sortField]>a[sortField]?1:-1));
+  tbody.innerHTML = accts.map(a=>{
+    const dimmed = maxDay!==undefined && !TRANSACTIONS.some(t=>(t.from===a.id||t.to===a.id)&&t.dayIndex<=maxDay);
+    return `<tr style="${dimmed?'opacity:.3':''}">
+      <td><strong>${a.id}</strong> ${a.label}</td>
+      <td>${a.bank}</td>
+      <td>${a.caseId}</td>
+      <td><span class="${chipClass(a.riskLabel)}">${a.riskScore} ${a.riskLabel}</span></td>
+      <td>${a.lastActivity}</td>
+      <td>${a.status}</td>
+    </tr>`;
+  }).join('');
+}
+
+function sortWatchlist(field) {
+  if(sortField===field) sortAsc=!sortAsc; else { sortField=field; sortAsc=false; }
+  renderWatchlist(replayRunning?replayDay:undefined);
+}
+
+/* ============================================================
+   SECTION 6: REPLAY SIMULATOR
+   ============================================================ */
+function toggleReplay() {
+  if(replayRunning) { pauseReplay(); } else { startReplay(); }
+}
+function startReplay() {
+  replayRunning = true;
+  document.getElementById('replay-play').textContent = 'Pause';
+  document.getElementById('replay-play').classList.add('btn-primary');
+  const speed = parseInt(document.getElementById('replay-speed').value);
+  replayInterval = setInterval(()=>{
+    if(replayDay >= replayMaxDay) { pauseReplay(); return; }
+    replayDay++;
+    updateReplayUI();
+  }, 1000/speed);
+}
+function pauseReplay() {
+  replayRunning = false;
+  clearInterval(replayInterval);
+  document.getElementById('replay-play').textContent = 'Play';
+}
+function resetReplay() {
+  pauseReplay();
+  replayDay = 0;
+  updateReplayUI();
+}
+function seekReplay(e) {
+  const rect = e.target.getBoundingClientRect();
+  const pct = (e.clientX - rect.left) / rect.width;
+  replayDay = Math.round(pct * replayMaxDay);
+  updateReplayUI();
+}
+function updateReplayUI() {
+  const pct = (replayDay/replayMaxDay*100).toFixed(1);
+  document.getElementById('replay-progress').style.width = pct+'%';
+  document.getElementById('replay-day').textContent = `Day ${replayDay} / ${replayMaxDay}`;
+  /* Update KPIs */
+  const activeTxns = TRANSACTIONS.filter(t=>t.dayIndex<=replayDay);
+  const activeAccts = new Set(); activeTxns.forEach(t=>{ activeAccts.add(t.from); activeAccts.add(t.to); });
+  const activeAlerts = ALERTS.filter(a=>a.dayIndex<=replayDay);
+  document.getElementById('kpi-alerts').textContent = activeAlerts.length;
+  renderAlertFeed(replayDay);
+  renderWatchlist(replayDay);
+  /* Update graph if visible */
+  if(cyMoney && document.getElementById('screen-moneygraph').classList.contains('active')) {
+    updateMoneyGraphForDay(replayDay);
+  }
+}
+document.getElementById('replay-speed').addEventListener('input', function() {
+  document.getElementById('replay-speed-label').textContent = this.value+'x';
+  if(replayRunning) { pauseReplay(); startReplay(); }
+});
+
+/* ============================================================
+   SECTION 7: SCREEN 2 — LEDGER
+   ============================================================ */
+function renderLedger() {
+  const acctFilter = document.getElementById('ledger-acct-filter').value;
+  const typeFilter = document.getElementById('ledger-type-filter').value;
+  const search = document.getElementById('ledger-search').value.toLowerCase();
+  let txns = [...TRANSACTIONS];
+  if(acctFilter!=='all') txns = txns.filter(t=>t.from===acctFilter||t.to===acctFilter);
+  if(typeFilter!=='all') txns = txns.filter(t=>t.type===typeFilter);
+  if(search) txns = txns.filter(t=>t.utr.toLowerCase().includes(search)||t.narration.toLowerCase().includes(search));
+  document.getElementById('ledger-count').textContent = txns.length+' transactions';
+  const tbody = document.getElementById('ledger-body');
+  tbody.innerHTML = txns.map(t=>`<tr class="${t.flagged?'flagged':''}">
+    <td>${t.evidence||'—'}</td><td>${t.date}</td><td>${t.type}</td>
+    <td style="text-align:right">${fmt(t.amount)}</td><td style="text-align:right">${fmt(t.balance)}</td>
+    <td>${t.type==='CR'?t.from:t.to}</td><td>${t.type==='CR'?t.to:t.from}</td>
+    <td style="font-family:monospace;font-size:10px;">${t.utr}</td><td>${t.narration}</td>
+  </tr>`).join('');
+}
+function initLedgerFilters() {
+  const sel = document.getElementById('ledger-acct-filter');
+  ACCOUNTS.forEach(a=>{ const o=document.createElement('option'); o.value=a.id; o.textContent=a.id+' '+a.label; sel.appendChild(o); });
+}
+
+function simulateUpload() {
+  const dz = document.getElementById('upload-dropzone');
+  dz.innerHTML = '<div style="color:var(--success);font-size:16px;margin-bottom:8px;">Processing...</div>';
+  setTimeout(()=>{
+    dz.innerHTML = '<div style="color:var(--success);font-size:16px;margin-bottom:8px;">File processed successfully</div><div style="font-size:11px;">synthetic_statement_caseA.pdf — 14 accounts, '+TRANSACTIONS.length+' transactions normalised</div>';
+    dz.classList.add('active');
+    showToast('Statement processed: '+TRANSACTIONS.length+' transactions loaded');
+  }, 800);
+}
+
+/* ============================================================
+   SECTION 8: SCREEN 3 — RISK ANALYSIS
+   ============================================================ */
+function renderRiskAccountList() {
+  const list = document.getElementById('risk-account-list');
+  const sorted = [...ACCOUNTS].filter(a=>!a.isLegitimate || a.riskScore>0).sort((a,b)=>b.riskScore-a.riskScore);
+  list.innerHTML = sorted.map(a=>`<div style="padding:10px 12px;border-bottom:1px solid var(--border);cursor:pointer;transition:background .15s;" 
+    onmouseover="this.style.background='var(--bg-tertiary)'" onmouseout="this.style.background=''" onclick="showRiskDrilldown('${a.id}')">
+    <div style="display:flex;justify-content:space-between;align-items:center;">
+      <span class="text-sm"><strong>${a.id}</strong> ${a.label}</span>
+      <span class="${chipClass(a.riskLabel)}">${a.riskScore}</span>
+    </div>
+    <div style="height:4px;background:var(--border);border-radius:2px;margin-top:6px;overflow:hidden;">
+      <div style="height:100%;width:${a.riskScore}%;background:${riskColor(a.riskLabel)};border-radius:2px;"></div>
+    </div>
+  </div>`).join('');
+}
+
+function showRiskDrilldown(accId) {
+  const acc = getAccount(accId);
+  const triggers = RULE_TRIGGERS[accId] || [];
+  const totalScore = triggers.reduce((s,t)=>s+t.score, 0);
+  const anomalyTrigger = triggers.find(t=>t.ruleId==='R6');
+  const ruleTriggers = triggers.filter(t=>t.ruleId!=='R6');
+  
+  let html = `<div class="card-title" style="justify-content:space-between;">
+    <span>${acc.id} — ${acc.label} (${acc.bank})</span>
+    <span class="text-xs text-muted">Case: ${acc.caseId} | Role: ${acc.role}</span>
+  </div>`;
+
+  /* Gauge + Rule bars */
+  html += `<div class="flex mb-16">
+    <div class="gauge-container">
+      <div class="gauge-arc" style="border-color:${riskColor(acc.riskLabel)};"><span class="gauge-val" style="color:${riskColor(acc.riskLabel)}">${acc.riskScore}</span></div>
+      <div class="text-sm" style="font-weight:600;margin-top:8px;">Risk Score</div>
+      <div><span class="${chipClass(acc.riskLabel)}">${acc.riskLabel.toUpperCase()}</span></div>
+    </div>
+    <div class="flex-1">
+      <div class="card-title">Weighted Rule Breakdown
+        <span class="tooltip-trigger" style="color:var(--accent);font-size:10px;">(?)<div class="tooltip-content">
+          ${RISK_RULES.map(r=>`<div>${r.name}: ${r.weight}% — ${r.description}</div>`).join('')}
+          <div style="margin-top:6px;border-top:1px solid var(--border);padding-top:4px;">Taint: starts 1.0, decays 0.15/hop. Labels: Low(0-25) Med(26-50) High(51-75) Critical(76-100)</div>
+        </div></span>
+      </div>
+      ${RISK_RULES.map(r=>{
+        const t = triggers.find(tr=>tr.ruleId===r.id);
+        const score = t ? t.score : 0;
+        const pct = (score/r.weight*100).toFixed(0);
+        return `<div style="display:flex;align-items:center;gap:8px;margin:4px 0;font-size:10px;">
+          <span style="width:120px;">${r.name} (${r.weight}%)</span>
+          <div style="flex:1;height:14px;background:var(--border);border-radius:2px;overflow:hidden;">
+            <div style="height:100%;width:${pct}%;background:${score>=r.weight*0.8?'var(--risk-critical)':score>=r.weight*0.5?'var(--risk-high)':'var(--risk-low)'};border-radius:2px;transition:width .3s;"></div>
+          </div>
+          <span style="width:40px;text-align:right;">${score}/${r.weight}</span>
+        </div>`;
+      }).join('')}
+    </div>
+  </div>`;
+
+  /* Triggered indicators */
+  html += `<div class="card-title">Triggered Indicators</div>`;
+  ruleTriggers.forEach(t=>{
+    const rule = RISK_RULES.find(r=>r.id===t.ruleId);
+    html += `<div class="card mb-12" style="border-left:3px solid ${riskColor(acc.riskLabel)};">
+      <div style="font-weight:600;font-size:12px;">${rule.name}</div>
+      <div class="text-sm text-muted">${t.reason}</div>`;
+    if(t.evidence.length) {
+      html += `<div class="text-xs" style="font-weight:600;margin-top:6px;">Evidence transactions:</div>`;
+      t.evidence.forEach(eid=>{
+        const txn = TRANSACTIONS.find(x=>x.id===eid);
+        if(txn) html += `<div class="evidence-row">${txn.evidence||txn.id}: ${txn.type} Rs ${fmt(txn.amount)} at ${txn.date} — ${txn.narration}</div>`;
+      });
+    }
+    html += `</div>`;
+  });
+
+  /* Anomaly supporting signal */
+  if(anomalyTrigger) {
+    html += `<div class="card" style="border:1px dashed var(--border);margin-top:12px;">
+      <div class="card-title">Supporting Signal: Anomaly Score</div>
+      <div class="text-sm">${anomalyTrigger.reason}</div>
+      <div class="text-xs text-muted mt-8">This is a supporting signal derived from baseline behaviour deviation. It is not the primary risk indicator.</div>
+    </div>`;
+  }
+
+  document.getElementById('risk-drilldown').innerHTML = html;
+}
+
+/* ============================================================
+   SECTION 9: SCREEN 4 — MONEY-TRAIL GRAPH
+   ============================================================ */
+function getTaintColor(taint) {
+  if(taint > 0.7) return '#E53E3E';
+  if(taint > 0.5) return '#ED8936';
+  if(taint > 0.3) return '#ECC94B';
+  return '#48BB78';
+}
+
+function buildMoneyTrailData(seedUTR, maxHops) {
+  /* Find seed transaction */
+  const seed = TRANSACTIONS.find(t=>t.utr===seedUTR);
+  if(!seed) return { nodes:[], edges:[] };
+
+  const nodes = new Map();
+  const edges = [];
+  const visited = new Set();
+
+  function addNode(id, taint) {
+    if(nodes.has(id)) { if(taint > nodes.get(id).taint) nodes.get(id).taint = taint; return; }
+    const acc = getAccount(id);
+    const totalAmt = TRANSACTIONS.filter(t=>t.to===id).reduce((s,t)=>s+t.amount,0);
+    nodes.set(id, {
+      id, label: acc ? `${acc.id}\n${acc.label}` : id,
+      taint, riskScore: acc ? acc.riskScore : 0,
+      totalAmount: totalAmt, bank: acc ? acc.bank : '',
+      riskLabel: acc ? acc.riskLabel : 'Low'
+    });
+  }
+
+  function expand(accountId, hop, taint) {
+    if(hop > maxHops || visited.has(accountId+'-'+hop)) return;
+    visited.add(accountId+'-'+hop);
+    addNode(accountId, taint);
+    const outgoing = TRANSACTIONS.filter(t=>t.from===accountId && t.flagged);
+    outgoing.forEach(t=>{
+      const target = t.to;
+      if(target==='ATM'||target==='UPI-MERCHANT'||target==='SALARY'||target.startsWith('UPI-EXT')) {
+        addNode(target, Math.max(0, taint-0.15));
+        edges.push({ source:accountId, target, amount:t.amount, date:t.date, utr:t.utr });
+        return;
+      }
+      const newTaint = Math.max(0, taint - 0.15);
+      addNode(target, newTaint);
+      const edgeKey = accountId+'->'+target;
+      if(!edges.find(e=>e.source===accountId&&e.target===target)) {
+        const totalBetween = TRANSACTIONS.filter(x=>x.from===accountId&&x.to===target&&x.flagged).reduce((s,x)=>s+x.amount,0);
+        edges.push({ source:accountId, target, amount:totalBetween, date:t.date, utr:t.utr });
+      }
+      expand(target, hop+1, newTaint);
+    });
+  }
+
+  /* Seed from victim */
+  const victim = seed.from;
+  addNode(victim, 1.0);
+  expand(victim, 0, 1.0);
+
+  return { nodes: Array.from(nodes.values()), edges };
+}
+
+function initMoneyGraph() {
+  const data = buildMoneyTrailData('UTR2024041700001', currentHops);
+  const elements = [];
+  data.nodes.forEach(n=>{
+    elements.push({ data: {
+      id: n.id, label: n.label, taint: n.taint, riskScore: n.riskScore,
+      totalAmount: n.totalAmount, bank: n.bank, riskLabel: n.riskLabel,
+      nodeSize: Math.max(25, Math.min(60, Math.sqrt(n.totalAmount/1000)*3))
+    }});
+  });
+  data.edges.forEach(e=>{
+    elements.push({ data: {
+      id: e.source+'-'+e.target, source: e.source, target: e.target,
+      label: 'Rs '+fmt(e.amount), amount: e.amount, date: e.date, utr: e.utr
+    }});
+  });
+
+  cyMoney = cytoscape({
+    container: document.getElementById('cy-money'),
+    elements,
+    style: [
+      { selector:'node', style: {
+        'label':'data(label)', 'text-wrap':'wrap', 'text-valign':'center', 'text-halign':'center',
+        'font-size':'8px', 'color':'#fff', 'text-outline-width':1, 'text-outline-color':'#000',
+        'width':'data(nodeSize)', 'height':'data(nodeSize)',
+        'background-color': function(ele){ return getTaintColor(ele.data('taint')); },
+        'border-width':2, 'border-color':'#fff'
+      }},
+      { selector:'edge', style: {
+        'label':'data(label)', 'font-size':'7px', 'color':'#9AA0A6', 'text-rotation':'autorotate',
+        'curve-style':'bezier', 'target-arrow-shape':'triangle', 'arrow-scale':0.8,
+        'line-color':'#4A5568', 'target-arrow-color':'#4A5568', 'width':2
+      }},
+      { selector:'node:selected', style: { 'border-color':'#4A9EFF', 'border-width':3 }}
+    ],
+    layout: { name:'breadthfirst', directed:true, padding:30, spacingFactor:1.2 },
+    minZoom:0.3, maxZoom:3
+  });
+
+  cyMoney.on('tap','node', function(e){
+    const d = e.target.data();
+    const acc = getAccount(d.id);
+    const drawer = document.getElementById('graph-drawer');
+    if(!acc) { drawer.innerHTML = `<div class="card-title">Node: ${d.id}</div><div class="text-sm text-muted">External node (${d.id})</div>`; return; }
+    const inTxns = TRANSACTIONS.filter(t=>t.to===d.id&&t.flagged);
+    const outTxns = TRANSACTIONS.filter(t=>t.from===d.id&&t.flagged);
+    drawer.innerHTML = `<div class="card-title">${acc.id} — ${acc.label}</div>
+      <div class="text-sm mb-12">Bank: ${acc.bank} | Case: ${acc.caseId}</div>
+      <div class="text-sm mb-12">Risk: <span class="${chipClass(acc.riskLabel)}">${acc.riskScore} ${acc.riskLabel}</span></div>
+      <div class="text-sm mb-12">Taint: ${d.taint.toFixed(2)}</div>
+      <div class="text-sm mb-12">Total Handled: Rs ${fmt(d.totalAmount)}</div>
+      <div class="card-title" style="margin-top:12px;">Incoming (${inTxns.length})</div>
+      ${inTxns.slice(0,5).map(t=>`<div class="text-xs" style="padding:3px 0;border-bottom:1px solid var(--border);">${t.from} — Rs ${fmt(t.amount)} at ${t.date}</div>`).join('')}
+      <div class="card-title" style="margin-top:12px;">Outgoing (${outTxns.length})</div>
+      ${outTxns.slice(0,5).map(t=>`<div class="text-xs" style="padding:3px 0;border-bottom:1px solid var(--border);">${t.to} — Rs ${fmt(t.amount)} at ${t.date}</div>`).join('')}
+      <div class="badge-locked mt-8">
+        <span>Subscriber/KYC: Obtainable only through the applicable lawful process</span>
+        <button class="btn btn-sm draft-btn" onclick="document.querySelector('[data-screen=reports]').click()">Draft Request</button>
+      </div>`;
+  });
+}
+
+function searchUTR() {
+  const utr = document.getElementById('utr-search').value.trim();
+  if(!utr) return;
+  if(cyMoney) cyMoney.destroy();
+  cyMoney = null;
+  currentHops = parseInt(document.getElementById('hop-slider').value);
+  initMoneyGraph();
+  showToast('Graph loaded for UTR: '+utr);
+}
+
+function expandNextHop() {
+  const slider = document.getElementById('hop-slider');
+  if(parseInt(slider.value) < parseInt(slider.max)) {
+    slider.value = parseInt(slider.value)+1;
+    document.getElementById('hop-label').textContent = slider.value;
+    currentHops = parseInt(slider.value);
+    if(cyMoney) cyMoney.destroy(); cyMoney=null;
+    initMoneyGraph();
+  }
+}
+
+function updateHopDisplay() {
+  document.getElementById('hop-label').textContent = document.getElementById('hop-slider').value;
+}
+
+function setGraphLayout(name) {
+  if(!cyMoney) return;
+  cyMoney.layout({ name, directed:true, padding:30, spacingFactor:1.2, animate:true, animationDuration:500 }).run();
+}
+
+function exportGraphPNG() {
+  if(!cyMoney) return;
+  const png = cyMoney.png({ full:true, scale:2, bg:'#0F1419' });
+  const link = document.createElement('a');
+  link.href = png; link.download = 'muletrace-money-trail.png'; link.click();
+  showToast('Graph exported as PNG');
+}
+
+function updateMoneyGraphForDay(day) {
+  /* Dim nodes whose transactions haven't happened yet */
+  if(!cyMoney) return;
+  cyMoney.nodes().forEach(node=>{
+    const id = node.data('id');
+    const hasTxn = TRANSACTIONS.some(t=>(t.from===id||t.to===id)&&t.dayIndex<=day);
+    node.style('opacity', hasTxn ? 1 : 0.2);
+  });
+}
+
+/* ============================================================
+   SECTION 10: SCREEN 5 — DOMAIN & IP INTELLIGENCE
+   ============================================================ */
+function renderDomainScreen() {
+  const tabs = document.getElementById('domain-tabs');
+  tabs.innerHTML = DOMAINS.map((d,i)=>`<div class="tab-item ${i===0?'active':''}" onclick="selectDomain(${i})" data-didx="${i}">${d.domain}</div>`).join('');
+  selectDomain(0);
+}
+
+function selectDomain(idx) {
+  document.querySelectorAll('#domain-tabs .tab-item').forEach((t,i)=>t.classList.toggle('active',i===idx));
+  const d = DOMAINS[idx];
+  const content = document.getElementById('domain-content');
+  content.innerHTML = `
+  <div class="grid-2 mb-16">
+    <div class="card">
+      <div class="card-title">RDAP / WHOIS</div>
+      <div class="text-sm"><strong>Registrar:</strong> ${d.registrar}</div>
+      <div class="text-sm"><strong>Reseller:</strong> ${d.reseller}</div>
+      <div class="text-sm"><strong>Created:</strong> ${d.created}</div>
+      <div class="text-sm"><strong>Expires:</strong> ${d.expires}</div>
+      <div class="text-sm"><strong>Privacy Protected:</strong> ${d.privacyProtected?'Yes':'No'}</div>
+      <div class="badge-locked">
+        <span>Registrant identity: Obtainable only through the applicable lawful process</span>
+        <button class="btn btn-sm draft-btn" onclick="document.querySelector('[data-screen=reports]').click()">Draft Request</button>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">DNS Records</div>
+      ${Object.entries(d.dns).map(([k,v])=>`<div class="text-sm"><strong>${k}:</strong> ${v}</div>`).join('')}
+    </div>
+  </div>
+  <div class="grid-2 mb-16">
+    <div class="card">
+      <div class="card-title">SSL / Certificate Transparency</div>
+      ${d.ssl.map(c=>`<div class="text-sm"><strong>Issuer:</strong> ${c.issuer}</div>
+        <div class="text-sm"><strong>Valid:</strong> ${c.validFrom} to ${c.validTo}</div>
+        <div class="text-sm"><strong>Serial:</strong> ${c.serial}</div>`).join('')}
+      <div class="text-sm mt-8"><strong>CT Log Entry:</strong> ${d.ctLog}</div>
+    </div>
+    <div class="card">
+      <div class="card-title">Subdomains &amp; Related</div>
+      ${d.subdomains.map(s=>`<div class="text-sm">${s}</div>`).join('')}
+      <div class="text-sm mt-8 text-muted">Related domains:</div>
+      ${d.relatedDomains.map(r=>`<div class="text-sm">${r}</div>`).join('')}
+    </div>
+  </div>
+  <div class="grid-2 mb-16">
+    <div class="card">
+      <div class="card-title">IP Ownership</div>
+      <div class="text-sm"><strong>IP:</strong> ${d.ipOwnership.ipv4}</div>
+      <div class="text-sm"><strong>ASN:</strong> ${d.asn} — ${d.asnName}</div>
+      <div class="text-sm"><strong>ISP/Provider:</strong> ${d.ipOwnership.isp}</div>
+      <div class="text-sm"><strong>Region:</strong> ${d.ipOwnership.region}, ${d.ipOwnership.country} <span class="badge-indicative">Indicative, not proof of identity or location</span></div>
+      <div class="text-sm"><strong>Reverse DNS:</strong> ${d.ipOwnership.reverseDns}</div>
+      <div class="text-sm"><strong>IPv4:</strong> ${d.ipOwnership.ipv4} | <strong>IPv6:</strong> ${d.ipOwnership.ipv6}</div>
+      <div class="text-sm"><strong>Tor/VPN/Proxy:</strong> ${d.ipOwnership.torVpnProxy.flag?'Detected':'No indicator'} <span class="badge-indicative">Source: ${d.ipOwnership.torVpnProxy.source}</span></div>
+      <div class="badge-locked mt-8">
+        <span>Subscriber/access records: Obtainable only through the applicable lawful process</span>
+        <button class="btn btn-sm draft-btn" onclick="document.querySelector('[data-screen=reports]').click()">Draft Request</button>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">Historical DNS / IP <span class="chip chip-medium" style="font-size:9px;margin-left:8px;">Good-to-have</span></div>
+      <div class="text-sm text-muted" style="padding:20px;text-align:center;">Historical DNS/IP change tracking — Phase 2 feature</div>
+      <div class="card-title mt-8">Infra Watchlist <span class="chip chip-medium" style="font-size:9px;margin-left:8px;">Phase 2</span></div>
+      <div class="text-sm text-muted" style="padding:12px;text-align:center;">Passive re-checks: new CT certs, DNS/NS changes, domain expiry monitoring</div>
+    </div>
+  </div>`;
+}
+
+/* ============================================================
+   SECTION 11: SCREEN 6 — TIMESTAMP CORRELATION
+   ============================================================ */
+function renderTimeline() {
+  const startDate = new Date(2024, 2, 10); // March 10
+  const endDate = new Date(2024, 5, 20); // June 20
+  const totalDays = (endDate-startDate)/(1000*60*60*24);
+  
+  function dayPos(dateStr) {
+    const d = new Date(dateStr);
+    const days = (d - startDate)/(1000*60*60*24);
+    return (days/totalDays*100).toFixed(1);
+  }
+
+  /* Transaction timeline */
+  const txnTl = document.getElementById('txn-timeline');
+  const keyTxns = TRANSACTIONS.filter(t=>t.flagged).reduce((acc,t)=>{
+    const key = t.dayIndex;
+    if(!acc.has(key)) acc.set(key, { dayIndex:key, date:t.date, totalAmt:0, count:0 });
+    const v = acc.get(key); v.totalAmt += t.amount; v.count++;
+    return acc;
+  }, new Map());
+  
+  txnTl.innerHTML = `<div style="position:absolute;bottom:20px;left:40px;right:40px;height:2px;background:var(--border);"></div>
+    <div style="position:absolute;bottom:5px;left:40px;font-size:9px;color:var(--text-muted);">Mar 2024</div>
+    <div style="position:absolute;bottom:5px;left:50%;transform:translateX(-50%);font-size:9px;color:var(--text-muted);">Apr 2024</div>
+    <div style="position:absolute;bottom:5px;right:40px;font-size:9px;color:var(--text-muted);">Jun 2024</div>`;
+
+  Array.from(keyTxns.values()).forEach(v=>{
+    const baseDate = new Date(2024,3,17); baseDate.setDate(baseDate.getDate()+v.dayIndex);
+    const left = dayPos(baseDate.toISOString().slice(0,10));
+    const height = Math.min(80, Math.max(20, Math.sqrt(v.totalAmt/10000)*5));
+    txnTl.innerHTML += `<div style="position:absolute;bottom:22px;left:calc(40px + ${left}% * 0.9);width:6px;height:${height}px;background:var(--accent);border-radius:2px;cursor:pointer;" title="Day ${v.dayIndex}: ${v.count} txns, Rs ${fmt(v.totalAmt)}"></div>`;
+  });
+
+  /* Infrastructure timeline */
+  const infraTl = document.getElementById('infra-timeline');
+  infraTl.innerHTML = `<div style="position:absolute;bottom:20px;left:40px;right:40px;height:2px;background:var(--border);"></div>
+    <div style="position:absolute;bottom:5px;left:40px;font-size:9px;color:var(--text-muted);">Mar 2024</div>
+    <div style="position:absolute;bottom:5px;left:50%;transform:translateX(-50%);font-size:9px;color:var(--text-muted);">Apr 2024</div>
+    <div style="position:absolute;bottom:5px;right:40px;font-size:9px;color:var(--text-muted);">Jun 2024</div>`;
+
+  const eventColors = { domain_reg:'var(--risk-critical)', ssl_cert:'var(--risk-high)', dns_change:'var(--risk-medium)', ip_seen:'var(--accent)' };
+  INFRA_EVENTS.forEach(evt=>{
+    const left = dayPos(evt.date);
+    infraTl.innerHTML += `<div style="position:absolute;bottom:22px;left:calc(40px + ${left}% * 0.9);">
+      <div style="width:8px;height:8px;border-radius:50%;background:${eventColors[evt.type]||'var(--accent)'};border:2px solid #fff;cursor:pointer;" title="${evt.label}"></div>
+      <div style="position:absolute;bottom:14px;left:50%;transform:translateX(-50%);font-size:8px;color:var(--text-secondary);white-space:nowrap;">${evt.label.slice(0,25)}...</div>
+    </div>`;
+  });
+}
+
+function setTimezone(tz) {
+  currentTimezone = tz;
+  document.getElementById('tz-ist').style.background = tz==='IST'?'var(--accent)':'var(--bg-tertiary)';
+  document.getElementById('tz-ist').style.color = tz==='IST'?'#fff':'var(--text-primary)';
+  document.getElementById('tz-utc').style.background = tz==='UTC'?'var(--accent)':'var(--bg-tertiary)';
+  document.getElementById('tz-utc').style.color = tz==='UTC'?'#fff':'var(--text-primary)';
+  showToast('Timezone: '+tz+(tz==='IST'?' (UTC+5:30)':' (UTC+0:00)'));
+}
+
+/* ============================================================
+   SECTION 12: SCREEN 7 — RELATIONSHIP GRAPH
+   ============================================================ */
+function initRelGraph() {
+  const elements = [];
+  /* Account nodes */
+  ACCOUNTS.forEach(a=>{
+    elements.push({ data:{ id:a.id, label:a.id+'\n'+a.label, type:'account', caseId:a.caseId, riskLabel:a.riskLabel }, classes:'account' });
+  });
+  /* Domain nodes */
+  DOMAINS.forEach(d=>{
+    elements.push({ data:{ id:'dom-'+d.domain, label:d.domain, type:'domain', caseId:d.caseId }, classes:'domain' });
+    /* IP nodes */
+    elements.push({ data:{ id:'ip-'+d.ip, label:d.ip+'\n'+d.asn, type:'ip', caseId:d.caseId }, classes:'ip' });
+    /* Nameserver nodes */
+    d.nameservers.forEach(ns=>{
+      if(!elements.find(e=>e.data.id==='ns-'+ns)) elements.push({ data:{ id:'ns-'+ns, label:ns, type:'nameserver' }, classes:'nameserver' });
+      elements.push({ data:{ source:'dom-'+d.domain, target:'ns-'+ns, label:'NS', linkType:'nameserver' }});
+    });
+    /* Domain -> IP */
+    elements.push({ data:{ source:'dom-'+d.domain, target:'ip-'+d.ip, label:'A record', linkType:'dns' }});
+  });
+  /* Phone nodes for some accounts */
+  ['ACC-02','ACC-06','ACC-13'].forEach(id=>{
+    const a = getAccount(id);
+    if(a) {
+      elements.push({ data:{ id:'ph-'+a.phone, label:a.phone, type:'phone' }, classes:'phone' });
+      elements.push({ data:{ source:a.id, target:'ph-'+a.phone, label:'Phone', linkType:'phone' }});
+    }
+  });
+  /* Case A accounts -> domain */
+  elements.push({ data:{ source:'ACC-01', target:'dom-secure-trade-india.example', label:'Victim visited', linkType:'visited' }});
+  elements.push({ data:{ source:'ACC-10', target:'dom-quickinvest-pro.example', label:'Victim visited', linkType:'visited' }});
+  
+  /* Cross-case links */
+  /* ACC-13 linked to both cases */
+  elements.push({ data:{ source:'ACC-06', target:'ACC-13', label:'Funds (Case A)', linkType:'funds' }});
+  elements.push({ data:{ source:'ACC-11', target:'ACC-13', label:'Funds (Case B)', linkType:'funds' }});
+  /* Mule chains */
+  elements.push({ data:{ source:'ACC-02', target:'ACC-03', label:'Funds', linkType:'funds' }});
+  elements.push({ data:{ source:'ACC-02', target:'ACC-04', label:'Funds', linkType:'funds' }});
+  elements.push({ data:{ source:'ACC-02', target:'ACC-05', label:'Funds', linkType:'funds' }});
+  elements.push({ data:{ source:'ACC-03', target:'ACC-06', label:'Funds', linkType:'funds' }});
+  elements.push({ data:{ source:'ACC-04', target:'ACC-06', label:'Funds', linkType:'funds' }});
+  elements.push({ data:{ source:'ACC-05', target:'ACC-06', label:'Funds', linkType:'funds' }});
+  elements.push({ data:{ source:'ACC-11', target:'ACC-12', label:'Funds', linkType:'funds' }});
+  elements.push({ data:{ source:'ACC-12', target:'ACC-14', label:'Funds', linkType:'funds' }});
+
+  const nodeColors = { account:'#4A9EFF', domain:'#E53E3E', ip:'#ED8936', phone:'#48BB78', nameserver:'#ECC94B' };
+  const nodeShapes = { account:'roundrectangle', domain:'diamond', ip:'hexagon', phone:'ellipse', nameserver:'triangle' };
+
+  cyRel = cytoscape({
+    container: document.getElementById('cy-rel'),
+    elements,
+    style: [
+      { selector:'node', style:{
+        'label':'data(label)', 'text-wrap':'wrap', 'text-valign':'bottom', 'text-halign':'center',
+        'font-size':'7px', 'color':'#E8EAED', 'text-outline-width':1, 'text-outline-color':'#000',
+        'width':30, 'height':30, 'border-width':2, 'border-color':'#fff'
+      }},
+      ...Object.entries(nodeColors).map(([type,color])=>({
+        selector:`node.${type}`, style:{ 'background-color':color, 'shape':nodeShapes[type] }
+      })),
+      { selector:'edge', style:{
+        'label':'data(label)', 'font-size':'7px', 'color':'#9AA0A6', 'text-rotation':'autorotate',
+        'curve-style':'bezier', 'target-arrow-shape':'triangle', 'arrow-scale':0.6,
+        'line-color':'#4A5568', 'target-arrow-color':'#4A5568', 'width':1.5
+      }},
+      { selector:'node:selected', style:{ 'border-color':'#4A9EFF','border-width':4 }}
+    ],
+    layout:{ name:'cose', padding:40, nodeRepulsion:function(){return 8000;}, idealEdgeLength:function(){return 80;} }
+  });
+
+  cyRel.on('tap','node', function(e){
+    const d = e.target.data();
+    const drawer = document.getElementById('rel-drawer');
+    const evidence = document.getElementById('rel-evidence');
+    
+    if(d.id==='ACC-13') {
+      evidence.innerHTML = `<div style="font-weight:600;margin-bottom:8px;">Why is ACC-13 (Shared Account X) linked to both cases?</div>
+        <div class="card mb-12" style="border-left:3px solid var(--risk-critical);">
+          <div class="text-sm"><strong>Shared bank account:</strong> ACC-13 received funds from ACC-06 (Case A, Rs 50,000) and ACC-11 (Case B, Rs 50,000)</div>
+          <div class="text-xs text-muted mt-8">Evidence: EV-055, EV-063</div>
+        </div>`;
+    } else if(d.id.startsWith('ns-')) {
+      evidence.innerHTML = `<div style="font-weight:600;margin-bottom:8px;">Shared Name Server: ${d.label}</div>
+        <div class="card mb-12" style="border-left:3px solid var(--risk-high);">
+          <div class="text-sm"><strong>Used by:</strong> secure-trade-india.example (Case A) AND quickinvest-pro.example (Case B)</div>
+          <div class="text-sm mt-8">Same nameserver infrastructure suggests common operator or hosting arrangement</div>
+          <div class="text-xs text-muted mt-8">Evidence: DNS record lookups (passive)</div>
+        </div>`;
+    } else {
+      const acc = getAccount(d.id);
+      evidence.innerHTML = `<div style="font-weight:600;margin-bottom:8px;">${d.label}</div>
+        <div class="text-sm">Type: ${d.type}</div>
+        ${acc ? `<div class="text-sm">Case: ${acc.caseId}</div><div class="text-sm">Risk: <span class="${chipClass(acc.riskLabel)}">${acc.riskScore}</span></div>` : ''}
+        <div class="text-sm text-muted mt-8">Click edges to see specific link evidence</div>`;
+    }
+  });
+
+  cyRel.on('tap','edge', function(e){
+    const d = e.target.data();
+    const evidence = document.getElementById('rel-evidence');
+    evidence.innerHTML = `<div style="font-weight:600;margin-bottom:8px;">Link: ${d.label}</div>
+      <div class="text-sm">From: ${d.source}</div>
+      <div class="text-sm">To: ${d.target}</div>
+      <div class="text-sm mt-8">Link type: ${d.linkType}</div>`;
+  });
+}
+
+function toggleRelNodeType(type) {
+  relNodeTypes[type] = !relNodeTypes[type];
+  if(!cyRel) return;
+  cyRel.nodes().forEach(n=>{
+    const nType = n.data('type');
+    if(nType===type) {
+      n.style('display', relNodeTypes[type] ? 'element' : 'none');
+    }
+  });
+}
+
+/* ============================================================
+   SECTION 13: SCREEN 8 — REPORTS
+   ============================================================ */
+function renderReportPreview() {
+  const preview = document.getElementById('report-preview');
+  preview.innerHTML = `
+    <div style="text-align:center;border-bottom:1px solid var(--border);padding-bottom:16px;margin-bottom:16px;">
+      <h2 style="font-size:18px;margin-bottom:4px;">CASE REPORT</h2>
+      <div class="text-sm text-muted">CASE-2024-A-0417 — Financial Crime Investigation</div>
+      <div class="text-sm text-muted">MuleTrace Analysis Report</div>
+    </div>
+    
+    <h4 style="font-size:14px;margin-bottom:8px;border-bottom:1px solid var(--border);padding-bottom:4px;">1. Case Summary</h4>
+    <div class="text-sm mb-16">Synthetic Victim 01 was defrauded of Rs 4,85,000 through a fake investment platform (secure-trade-india.example). The victim made 3 payments between 2024-04-17 and 2024-04-19. Funds were traced through a chain of 5 mule accounts before cash-out via ATM withdrawal (Rs 2,00,000) and crypto exchange deposit (Rs 1,50,000).</div>
+
+    <h4 style="font-size:14px;margin-bottom:8px;border-bottom:1px solid var(--border);padding-bottom:4px;">2. Flagged Accounts</h4>
+    <table class="data-table mb-16">
+      <tr><th>Account</th><th>Risk Score</th><th>Key Indicator</th></tr>
+      ${ACCOUNTS.filter(a=>a.riskScore>50&&(a.caseId==='CASE-A'||a.caseId==='CASE-A+B')).map(a=>`<tr>
+        <td>${a.id} ${a.label}</td>
+        <td><span class="${chipClass(a.riskLabel)}">${a.riskScore} ${a.riskLabel}</span></td>
+        <td>${RULE_TRIGGERS[a.id]?RULE_TRIGGERS[a.id][0].reason.slice(0,60)+'...':'—'}</td>
+      </tr>`).join('')}
+    </table>
+
+    <h4 style="font-size:14px;margin-bottom:8px;border-bottom:1px solid var(--border);padding-bottom:4px;">3. Money-Trail Summary</h4>
+    <div class="text-sm mb-16">Victim (ACC-01) → Mule A1 (ACC-02, forwarded in &lt;6 min) → Split to Mule A2 (ACC-03, round-figure layering), Mule A3 (ACC-04, fan-in collector), Mule A4 (ACC-05, dormant reactivated) → Consolidated at Mule A5 (ACC-06) → Cash-out: ATM Rs 2,00,000 + Crypto Exchange Rs 1,50,000. Shared Account X (ACC-13) links to Case B.</div>
+
+    <h4 style="font-size:14px;margin-bottom:8px;border-bottom:1px solid var(--border);padding-bottom:4px;">4. Infrastructure Findings</h4>
+    <div class="text-sm mb-16">
+      Domain secure-trade-india.example registered 2024-03-15 via PrivacyShield Registrar. Hosted on 203.0.113.10 (AS64500, ShadyCloud Hosting). SSL cert issued 1 day post-registration. Shared nameservers (ns1/ns2.shady-hosting.example) with quickinvest-pro.example (Case B).<br>
+      <span class="badge-indicative">All geolocation/hosting data is indicative, not proof of identity or location</span>
+    </div>
+
+    <h4 style="font-size:14px;margin-bottom:8px;border-bottom:1px solid var(--border);padding-bottom:4px;">5. Linked Entities (Cross-Case)</h4>
+    <div class="text-sm mb-16">ACC-13 (Shared Account X) received funds from both Case A and Case B. Nameservers ns1/ns2.shady-hosting.example used by domains in both cases. ASN AS64500 hosts infrastructure for both cases.</div>
+
+    <h4 style="font-size:14px;margin-bottom:8px;border-bottom:1px solid var(--border);padding-bottom:4px;">6. Evidence Index</h4>
+    <div class="text-sm mb-16">${TRANSACTIONS.filter(t=>t.evidence).map(t=>`${t.evidence}: ${t.type} Rs ${fmt(t.amount)} (${t.utr}) — ${t.date}`).slice(0,10).join('<br>')}<br><span class="text-muted">... and ${TRANSACTIONS.filter(t=>t.evidence).length-10} more evidence items</span></div>
+
+    <h4 style="font-size:14px;margin-bottom:8px;border-bottom:1px solid var(--border);padding-bottom:4px;">7. Limitations</h4>
+    <div class="text-sm" style="padding:8px;background:var(--bg-primary);border-radius:6px;">
+      <div>All geolocation and hosting attribution data is indicative only — it does not constitute proof of identity or physical location.</div>
+      <div class="mt-8">IP-based correlations are investigative leads, not conclusions. IPs may be shared (CGNAT) or dynamically assigned (DHCP).</div>
+      <div class="mt-8">Subscriber, login, and KYC data has not been obtained and requires applicable lawful process.</div>
+      <div class="mt-8">No active scanning or probing of third-party servers was performed. All infrastructure data sourced from passive, public sources (RDAP, DNS, CT logs).</div>
+      <div class="mt-8">No real bank systems were accessed. No accounts were frozen.</div>
+    </div>`;
+}
+
+function downloadPDF() {
+  showToast('Opening print dialog for PDF export...');
+  setTimeout(()=>window.print(), 300);
+}
+
+function downloadExcel() {
+  let csv = 'EV-Ref,Date/Time,Dr/Cr,Amount,Balance,Counterparty,Account,UTR,Narration,Flagged\n';
+  TRANSACTIONS.forEach(t=>{
+    csv += `${t.evidence||''},${t.date},${t.type},${t.amount},${t.balance},${t.type==='CR'?t.from:t.to},${t.type==='CR'?t.to:t.from},${t.utr},"${t.narration}",${t.flagged}\n`;
+  });
+  const blob = new Blob([csv], {type:'text/csv'});
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(blob);
+  link.download = 'muletrace-case-a-transactions.csv';
+  link.click();
+  showToast('CSV downloaded: muletrace-case-a-transactions.csv');
+}
+
+/* ============================================================
+   SECTION 14: GLOBAL SEARCH
+   ============================================================ */
+function handleGlobalSearch() {
+  const q = document.getElementById('globalSearch').value.trim().toLowerCase();
+  if(!q) return;
+  /* Search accounts */
+  const accMatch = ACCOUNTS.find(a=>a.id.toLowerCase()===q || a.label.toLowerCase().includes(q) || a.upiId.toLowerCase().includes(q) || a.phone.includes(q));
+  if(accMatch) {
+    document.querySelector('[data-screen="risk"]').click();
+    setTimeout(()=>showRiskDrilldown(accMatch.id), 100);
+    showToast('Found account: '+accMatch.id);
+    return;
+  }
+  /* Search UTR */
+  const utrMatch = TRANSACTIONS.find(t=>t.utr.toLowerCase().includes(q));
+  if(utrMatch) {
+    document.querySelector('[data-screen="moneygraph"]').click();
+    document.getElementById('utr-search').value = utrMatch.utr;
+    setTimeout(()=>searchUTR(), 200);
+    showToast('Found UTR: '+utrMatch.utr);
+    return;
+  }
+  /* Search domain */
+  const domMatch = DOMAINS.find(d=>d.domain.includes(q) || d.ip.includes(q));
+  if(domMatch) {
+    document.querySelector('[data-screen="domain"]').click();
+    showToast('Found domain: '+domMatch.domain);
+    return;
+  }
+  showToast('No results found for: '+q);
+}
+
+function filterByCase(caseId) {
+  /* Just update the watchlist filter for now */
+  renderWatchlist(replayRunning?replayDay:undefined);
+}
+
+/* ============================================================
+   SECTION 15: INITIALIZATION
+   ============================================================ */
+function init() {
+  renderAlertFeed();
+  renderWatchlist();
+  renderRiskAccountList();
+  initLedgerFilters();
+  renderLedger();
+}
+
+document.addEventListener('DOMContentLoaded', init);
+</script>
+</body>
+</html>

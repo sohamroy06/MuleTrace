@@ -1,0 +1,994 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MuleTrace — Wireframe</title>
+<style>
+  @page { size: landscape; margin: 20mm; }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Segoe UI', Arial, Helvetica, sans-serif; background: #fff; color: #333; }
+  .page { width: 1440px; min-height: 900px; padding: 32px; position: relative; page-break-after: always; border-bottom: 2px dashed #ccc; margin: 0 auto 20px; }
+  .page:last-child { page-break-after: auto; border-bottom: none; }
+  .page-title { font-size: 20px; font-weight: 700; border-bottom: 2px solid #333; padding-bottom: 8px; margin-bottom: 16px; }
+  .page-num { position: absolute; top: 16px; right: 32px; font-size: 12px; color: #999; }
+  .ann { display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; border-radius: 50%; border: 2px solid #E53E3E; color: #E53E3E; font-size: 11px; font-weight: 700; margin-left: 4px; vertical-align: middle; flex-shrink: 0; }
+  .box { border: 1.5px solid #999; background: #F5F5F5; border-radius: 4px; padding: 10px; }
+  .box-dark { background: #E5E5E5; }
+  .box-label { font-size: 11px; color: #666; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
+  .placeholder { background: #CCC; height: 12px; border-radius: 2px; margin: 4px 0; }
+  .placeholder.w50 { width: 50%; } .placeholder.w70 { width: 70%; } .placeholder.w30 { width: 30%; } .placeholder.w90 { width: 90%; }
+  .chip { display: inline-block; padding: 2px 10px; border-radius: 10px; font-size: 11px; font-weight: 600; }
+  .chip-low { background: #E5E5E5; color: #666; } .chip-med { background: #CCC; color: #333; }
+  .chip-high { background: #999; color: #fff; } .chip-crit { background: #333; color: #fff; }
+  .sidebar { width: 200px; background: #333; color: #fff; padding: 16px; border-radius: 4px; position: absolute; left: 32px; top: 72px; bottom: 72px; }
+  .sidebar-item { padding: 8px 10px; font-size: 12px; border-radius: 3px; margin-bottom: 2px; cursor: default; }
+  .sidebar-item.active { background: #666; }
+  .sidebar-logo { font-size: 16px; font-weight: 700; padding: 10px; margin-bottom: 12px; border-bottom: 1px solid #666; }
+  .main { margin-left: 220px; }
+  .search-bar { border: 1.5px solid #999; border-radius: 4px; padding: 8px 12px; font-size: 12px; background: #fff; display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
+  .search-bar .icon { width: 16px; height: 16px; border: 1.5px solid #999; border-radius: 50%; display: inline-block; }
+  table.wf { width: 100%; border-collapse: collapse; font-size: 11px; }
+  table.wf th { background: #E5E5E5; padding: 6px 8px; text-align: left; font-weight: 600; border-bottom: 2px solid #999; }
+  table.wf td { padding: 6px 8px; border-bottom: 1px solid #CCC; }
+  .kpi-row { display: flex; gap: 12px; margin-bottom: 16px; }
+  .kpi-card { flex: 1; border: 1.5px solid #999; border-radius: 4px; padding: 12px; text-align: center; }
+  .kpi-val { font-size: 28px; font-weight: 700; }
+  .kpi-label { font-size: 11px; color: #666; }
+  .footer-banner { position: absolute; bottom: 8px; left: 32px; right: 32px; background: #E5E5E5; border: 1.5px solid #999; padding: 6px 12px; font-size: 11px; text-align: center; border-radius: 4px; }
+  .flex { display: flex; gap: 12px; }
+  .flex-1 { flex: 1; }
+  .btn { display: inline-block; border: 1.5px solid #999; border-radius: 4px; padding: 4px 12px; font-size: 11px; background: #E5E5E5; cursor: default; }
+  .btn-dark { background: #333; color: #fff; border-color: #333; }
+  .locked { border: 1.5px dashed #999; padding: 8px; border-radius: 4px; display: flex; align-items: center; gap: 8px; font-size: 11px; color: #666; }
+  .locked .lock-icon { font-size: 16px; }
+  .badge { display: inline-block; padding: 1px 6px; border: 1px solid #999; border-radius: 3px; font-size: 9px; color: #666; background: #F5F5F5; }
+  .flow-box { border: 1.5px solid #333; border-radius: 4px; padding: 10px 16px; text-align: center; font-size: 12px; font-weight: 600; display: inline-block; background: #F5F5F5; }
+  .flow-diamond { width: 100px; height: 100px; border: 1.5px solid #333; transform: rotate(45deg); display: inline-flex; align-items: center; justify-content: center; background: #F5F5F5; margin: 20px; }
+  .flow-diamond span { transform: rotate(-45deg); font-size: 10px; text-align: center; }
+  .arrow { color: #333; font-size: 20px; margin: 0 8px; }
+  .arch-layer { border: 1.5px solid #666; border-radius: 4px; padding: 12px; margin: 8px 0; background: #F5F5F5; }
+  .arch-layer-title { font-size: 12px; font-weight: 700; margin-bottom: 6px; color: #333; }
+  .caveat { border: 1.5px solid #999; border-radius: 4px; padding: 10px; background: #FFF8E1; font-size: 11px; }
+  .ann-list { font-size: 11px; color: #666; margin-top: 12px; padding: 8px; background: #FAFAFA; border: 1px solid #E5E5E5; border-radius: 4px; }
+  .ann-list div { margin-bottom: 3px; }
+  .timeline-row { display: flex; align-items: stretch; height: 60px; border-bottom: 1px solid #CCC; }
+  .timeline-label { width: 120px; font-size: 10px; padding: 4px; display: flex; align-items: center; }
+  .timeline-bar { flex: 1; position: relative; background: #F5F5F5; }
+  .timeline-event { position: absolute; height: 20px; top: 20px; border-radius: 3px; }
+  .graph-placeholder { border: 1.5px solid #999; border-radius: 4px; background: #F5F5F5; display: flex; align-items: center; justify-content: center; color: #999; font-size: 14px; }
+  .node-circle { width: 36px; height: 36px; border-radius: 50%; border: 2px solid #666; display: inline-flex; align-items: center; justify-content: center; font-size: 9px; background: #E5E5E5; }
+  .node-diamond { width: 28px; height: 28px; border: 2px solid #666; transform: rotate(45deg); display: inline-flex; align-items: center; justify-content: center; font-size: 8px; background: #E5E5E5; }
+  .node-rect { width: 50px; height: 24px; border: 2px solid #666; border-radius: 3px; display: inline-flex; align-items: center; justify-content: center; font-size: 8px; background: #E5E5E5; }
+  .gauge-arc { width: 120px; height: 60px; border: 6px solid #999; border-bottom: none; border-radius: 60px 60px 0 0; margin: 0 auto 8px; display: flex; align-items: flex-end; justify-content: center; padding-bottom: 4px; font-size: 20px; font-weight: 700; }
+  .h-bar { display: flex; align-items: center; gap: 8px; margin: 4px 0; font-size: 10px; }
+  .h-bar-fill { height: 14px; background: #999; border-radius: 2px; }
+  .adapter-card { flex: 1; border: 1.5px solid #999; border-radius: 4px; padding: 10px; text-align: center; }
+  .adapter-icon { width: 32px; height: 32px; border: 1.5px solid #999; border-radius: 4px; margin: 0 auto 6px; display: flex; align-items: center; justify-content: center; font-size: 10px; background: #E5E5E5; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 4px; }
+  .dot-on { background: #666; } .dot-off { background: #CCC; }
+  .slider { width: 100%; height: 6px; background: #CCC; border-radius: 3px; position: relative; }
+  .slider-thumb { width: 14px; height: 14px; border-radius: 50%; background: #666; border: 2px solid #333; position: absolute; top: -4px; left: 30%; }
+  .progress-bar { width: 100%; height: 8px; background: #E5E5E5; border-radius: 4px; overflow: hidden; }
+  .progress-fill { width: 35%; height: 100%; background: #999; }
+  .dropzone { border: 2px dashed #999; border-radius: 8px; padding: 32px; text-align: center; color: #999; font-size: 14px; }
+  .evidence-row { background: #E5E5E5; border-left: 3px solid #666; padding: 4px 8px; font-size: 10px; margin: 2px 0; }
+  .drawer { border-left: 2px solid #999; padding: 12px; background: #FAFAFA; }
+  .template-area { border: 1.5px solid #999; border-radius: 4px; padding: 10px; font-size: 10px; font-family: monospace; background: #FAFAFA; min-height: 80px; }
+</style>
+</head>
+<body>
+
+<!-- ===== PAGE 1: WATCHLIST DASHBOARD ===== -->
+<div class="page">
+  <div class="page-num">Page 1 of 10</div>
+  <div class="page-title">Screen 1: Watchlist Dashboard (Home)</div>
+  <div class="sidebar">
+    <div class="sidebar-logo">MuleTrace</div>
+    <div class="sidebar-item active">1. Dashboard</div>
+    <div class="sidebar-item">2. Ingestion &amp; Ledger</div>
+    <div class="sidebar-item">3. Mule Risk Analysis</div>
+    <div class="sidebar-item">4. Money-Trail Graph</div>
+    <div class="sidebar-item">5. Domain &amp; IP Intel</div>
+    <div class="sidebar-item">6. Timestamp Correlation</div>
+    <div class="sidebar-item">7. Relationship Graph</div>
+    <div class="sidebar-item">8. Reports &amp; Requests</div>
+  </div>
+  <div class="main">
+    <div class="search-bar"><span class="icon"></span> Global Search: accounts, UTRs, domains, IPs, phones <span class="ann">1</span></div>
+
+    <div class="kpi-row">
+      <div class="kpi-card"><div class="kpi-val">14</div><div class="kpi-label">Accounts Monitored</div> <span class="ann">2</span></div>
+      <div class="kpi-card"><div class="kpi-val">7</div><div class="kpi-label">Active Alerts</div></div>
+      <div class="kpi-card"><div class="kpi-val">2</div><div class="kpi-label">Open Cases</div></div>
+      <div class="kpi-card"><div class="kpi-val">3</div><div class="kpi-label">Linked Infrastructure</div></div>
+    </div>
+
+    <div class="flex" style="margin-bottom:12px;">
+      <div class="flex-1">
+        <div class="box" style="height:180px;overflow:auto;">
+          <div class="box-label">Live Alert Feed <span class="ann">3</span></div>
+          <div style="font-size:11px;padding:4px 0;border-bottom:1px solid #CCC;"><span class="chip chip-crit">CRITICAL</span> ACC-02 — Rapid in-out: 100% forwarded within 6 min</div>
+          <div style="font-size:11px;padding:4px 0;border-bottom:1px solid #CCC;"><span class="chip chip-crit">CRITICAL</span> ACC-06 — Score crossed 95: consolidator pattern</div>
+          <div style="font-size:11px;padding:4px 0;border-bottom:1px solid #CCC;"><span class="chip chip-high">HIGH</span> ACC-04 — Fan-in: 14 credits from unrelated senders</div>
+          <div style="font-size:11px;padding:4px 0;border-bottom:1px solid #CCC;"><span class="chip chip-crit">CRITICAL</span> ACC-05 — Dormant 180d reactivated</div>
+          <div style="font-size:11px;padding:4px 0;border-bottom:1px solid #CCC;"><span class="chip chip-high">HIGH</span> ACC-03 — Round-figure layering detected</div>
+          <div style="font-size:11px;padding:4px 0;border-bottom:1px solid #CCC;"><span class="chip chip-high">HIGH</span> ACC-13 — Cross-case link: appears in Case A and B</div>
+          <div style="font-size:11px;padding:4px 0;"><span class="chip chip-med">MEDIUM</span> ACC-09 — Crypto exchange deposit flagged</div>
+        </div>
+      </div>
+      <div style="width:260px;">
+        <div class="box" style="height:180px;">
+          <div class="box-label">Replay Simulator <span class="ann">4</span></div>
+          <div style="text-align:center;margin:12px 0;">
+            <span class="btn btn-dark">Play</span> <span class="btn">Pause</span>
+          </div>
+          <div style="font-size:10px;color:#666;margin-bottom:4px;">Speed</div>
+          <div class="slider" style="margin-bottom:12px;"><div class="slider-thumb"></div></div>
+          <div style="font-size:10px;color:#666;margin-bottom:4px;">Progress</div>
+          <div class="progress-bar"><div class="progress-fill"></div></div>
+          <div style="font-size:9px;color:#999;margin-top:6px;text-align:center;">Simulated feed (synthetic)</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="box" style="margin-bottom:12px;">
+      <div class="box-label">Watchlist Table <span class="ann">5</span></div>
+      <table class="wf">
+        <tr><th>Account</th><th>Bank</th><th>Case</th><th>Risk Score</th><th>Last Activity</th><th>Status</th></tr>
+        <tr><td>ACC-06 Mule A5</td><td>ICICI</td><td>CASE-A</td><td><span class="chip chip-crit">95 Critical</span></td><td>2024-04-28</td><td>Flagged</td></tr>
+        <tr><td>ACC-02 Mule A1</td><td>PNB</td><td>CASE-A</td><td><span class="chip chip-crit">92 Critical</span></td><td>2024-04-17</td><td>Flagged</td></tr>
+        <tr><td>ACC-13 Shared X</td><td>BOI</td><td>A+B</td><td><span class="chip chip-crit">90 Critical</span></td><td>2024-05-25</td><td>Under Review</td></tr>
+        <tr><td>ACC-05 Mule A4</td><td>BOB</td><td>CASE-A</td><td><span class="chip chip-crit">88 Critical</span></td><td>2024-04-22</td><td>Flagged</td></tr>
+        <tr><td>ACC-07 Legitimate 01</td><td>SBI</td><td>CASE-A</td><td><span class="chip chip-low">12 Low</span></td><td>2024-05-10</td><td>Normal</td></tr>
+        <tr><td>ACC-08 Legitimate 02</td><td>HDFC</td><td>CASE-A</td><td><span class="chip chip-low">8 Low</span></td><td>2024-05-05</td><td>Normal</td></tr>
+      </table>
+    </div>
+
+    <div class="flex">
+      <div class="adapter-card"><div class="adapter-icon">PDF</div><div style="font-size:10px;">PDF/Excel Upload</div> <span class="ann">6</span></div>
+      <div class="adapter-card"><div class="adapter-icon">CSV</div><div style="font-size:10px;">CSV / SFTP Drop</div></div>
+      <div class="adapter-card"><div class="adapter-icon">API</div><div style="font-size:10px;">API / Webhook</div></div>
+      <div style="flex:2;font-size:10px;color:#666;padding:8px;display:flex;align-items:center;">
+        <span class="ann">7</span> Production: data arrives from banks via lawful requests
+      </div>
+    </div>
+  </div>
+  <div class="footer-banner"><span class="ann">8</span> Synthetic demo data only. No real personal data.</div>
+  <div class="ann-list">
+    <div><span class="ann">1</span> Global Search — search across accounts, UTRs, domains, IPs, phone numbers</div>
+    <div><span class="ann">2</span> KPI Cards — summary metrics for the case workspace</div>
+    <div><span class="ann">3</span> Live Alert Feed — scrollable real-time alerts sorted by severity</div>
+    <div><span class="ann">4</span> Replay Simulator — Play/Pause/Speed streams synthetic transactions; labelled "Simulated feed"</div>
+    <div><span class="ann">5</span> Watchlist Table — monitored accounts with risk score chips, sortable columns</div>
+    <div><span class="ann">6</span> Input Adapters — pluggable data sources: PDF upload, CSV/SFTP, API/webhook</div>
+    <div><span class="ann">7</span> Production note — clarifies that live data comes via lawful bank requests</div>
+    <div><span class="ann">8</span> Synthetic Data Banner — persistent on every screen</div>
+  </div>
+</div>
+
+<!-- ===== PAGE 2: INGESTION & NORMALISED LEDGER ===== -->
+<div class="page">
+  <div class="page-num">Page 2 of 10</div>
+  <div class="page-title">Screen 2: Ingestion &amp; Normalised Ledger</div>
+  <div class="sidebar">
+    <div class="sidebar-logo">MuleTrace</div>
+    <div class="sidebar-item">1. Dashboard</div>
+    <div class="sidebar-item active">2. Ingestion &amp; Ledger</div>
+    <div class="sidebar-item">3. Mule Risk Analysis</div>
+    <div class="sidebar-item">4. Money-Trail Graph</div>
+    <div class="sidebar-item">5. Domain &amp; IP Intel</div>
+    <div class="sidebar-item">6. Timestamp Correlation</div>
+    <div class="sidebar-item">7. Relationship Graph</div>
+    <div class="sidebar-item">8. Reports &amp; Requests</div>
+  </div>
+  <div class="main">
+    <div class="search-bar"><span class="icon"></span> Global Search <span class="ann">1</span></div>
+    <div class="flex" style="margin-bottom:16px;">
+      <div class="flex-1">
+        <div class="dropzone" style="height:100px;">
+          <div style="font-size:24px;color:#CCC;margin-bottom:8px;">[ ]</div>
+          Drag &amp; drop PDF / Excel statement here, or click to browse <span class="ann">2</span>
+        </div>
+      </div>
+      <div style="width:300px;">
+        <div class="box" style="height:100px;">
+          <div class="box-label">Adapter Status <span class="ann">3</span></div>
+          <div style="font-size:11px;padding:4px 0;"><span class="dot dot-on"></span> PDF/Excel Adapter — Ready</div>
+          <div style="font-size:11px;padding:4px 0;"><span class="dot dot-off"></span> CSV/SFTP — Not configured</div>
+          <div style="font-size:11px;padding:4px 0;"><span class="dot dot-off"></span> API/Webhook — Not configured</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="flex" style="margin-bottom:8px;align-items:center;">
+      <div style="font-size:11px;"><span class="ann">4</span> Filters:</div>
+      <div class="btn">Account: All</div>
+      <div class="btn">Type: All</div>
+      <div class="btn">Date Range</div>
+      <div class="btn">Amount Range</div>
+      <div style="flex:1;"></div>
+      <div class="search-bar" style="width:200px;margin:0;"><span class="icon"></span> Search UTR / narration</div>
+    </div>
+
+    <div class="box">
+      <div class="box-label">Normalised Transaction Ledger <span class="ann">5</span></div>
+      <table class="wf">
+        <tr><th>EV-Ref</th><th>Date/Time (IST)</th><th>Dr/Cr</th><th>Amount (Rs)</th><th>Balance</th><th>Counterparty</th><th>Account Ref</th><th>UTR</th><th>Narration</th></tr>
+        <tr><td>EV-001</td><td>2024-04-17 10:30</td><td>DR</td><td>1,00,000</td><td>45,200</td><td>ACC-02 Mule A1</td><td>ACC-01</td><td>UTR20240417001</td><td>INV/SECURE-TRADE/REF001</td></tr>
+        <tr><td>EV-002</td><td>2024-04-17 10:35</td><td>CR</td><td>1,00,000</td><td>1,02,500</td><td>ACC-01 Victim</td><td>ACC-02</td><td>UTR20240417001</td><td>NEFT/INV PAYMENT</td></tr>
+        <tr><td>EV-003</td><td>2024-04-17 10:41</td><td>DR</td><td>50,000</td><td>52,500</td><td>ACC-03 Mule A2</td><td>ACC-02</td><td>UTR20240417004</td><td>RTGS/TRANSFER</td></tr>
+        <tr><td style="color:#999;">...</td><td colspan="8" style="color:#999;font-style:italic;">~140 transactions total (scrollable)</td></tr>
+      </table>
+    </div>
+    <div style="margin-top:8px;font-size:11px;color:#666;text-align:right;"><span class="ann">6</span> Showing 1-25 of 140 | Page 1 of 6 | <span class="btn">Prev</span> <span class="btn">Next</span></div>
+  </div>
+  <div class="footer-banner">Synthetic demo data only. No real personal data.</div>
+  <div class="ann-list">
+    <div><span class="ann">1</span> Global Search bar</div>
+    <div><span class="ann">2</span> Upload Dropzone — drag-drop PDF/Excel; simulated processing on click</div>
+    <div><span class="ann">3</span> Adapter Status — green dot = active, grey = not configured</div>
+    <div><span class="ann">4</span> Filter Controls — by account, type, date range, amount range</div>
+    <div><span class="ann">5</span> Normalised Ledger — standardised columns across all statement formats; EV-ref for evidence linking</div>
+    <div><span class="ann">6</span> Pagination controls</div>
+  </div>
+</div>
+
+<!-- ===== PAGE 3: MULE RISK ANALYSIS ===== -->
+<div class="page">
+  <div class="page-num">Page 3 of 10</div>
+  <div class="page-title">Screen 3: Mule Risk Analysis</div>
+  <div class="sidebar">
+    <div class="sidebar-logo">MuleTrace</div>
+    <div class="sidebar-item">1. Dashboard</div>
+    <div class="sidebar-item">2. Ingestion &amp; Ledger</div>
+    <div class="sidebar-item active">3. Mule Risk Analysis</div>
+    <div class="sidebar-item">4. Money-Trail Graph</div>
+    <div class="sidebar-item">5. Domain &amp; IP Intel</div>
+    <div class="sidebar-item">6. Timestamp Correlation</div>
+    <div class="sidebar-item">7. Relationship Graph</div>
+    <div class="sidebar-item">8. Reports &amp; Requests</div>
+  </div>
+  <div class="main">
+    <div class="search-bar"><span class="icon"></span> Global Search</div>
+    <div class="flex">
+      <!-- Left panel: ranked accounts -->
+      <div style="width:280px;">
+        <div class="box-label">Ranked Accounts <span class="ann">1</span></div>
+        <div class="box" style="padding:0;">
+          <div style="padding:8px;border-bottom:1px solid #CCC;background:#E5E5E5;font-weight:600;font-size:11px;">
+            ACC-06 Mule A5 — <span class="chip chip-crit">95</span>
+            <div style="height:4px;background:#333;border-radius:2px;margin-top:4px;width:95%;"></div>
+          </div>
+          <div style="padding:8px;border-bottom:1px solid #CCC;font-size:11px;">
+            ACC-02 Mule A1 — <span class="chip chip-crit">92</span>
+            <div style="height:4px;background:#333;border-radius:2px;margin-top:4px;width:92%;"></div>
+          </div>
+          <div style="padding:8px;border-bottom:1px solid #CCC;font-size:11px;">
+            ACC-13 Shared X — <span class="chip chip-crit">90</span>
+            <div style="height:4px;background:#666;border-radius:2px;margin-top:4px;width:90%;"></div>
+          </div>
+          <div style="padding:8px;border-bottom:1px solid #CCC;font-size:11px;">
+            ACC-05 Mule A4 — <span class="chip chip-crit">88</span>
+            <div style="height:4px;background:#666;border-radius:2px;margin-top:4px;width:88%;"></div>
+          </div>
+          <div style="padding:8px;border-bottom:1px solid #CCC;font-size:11px;">
+            ACC-04 Mule A3 — <span class="chip chip-high">85</span>
+            <div style="height:4px;background:#999;border-radius:2px;margin-top:4px;width:85%;"></div>
+          </div>
+          <div style="padding:8px;border-bottom:1px solid #CCC;font-size:11px;">
+            ACC-03 Mule A2 — <span class="chip chip-high">78</span>
+            <div style="height:4px;background:#999;border-radius:2px;margin-top:4px;width:78%;"></div>
+          </div>
+          <div style="padding:8px;border-bottom:1px solid #CCC;font-size:11px;">
+            ACC-07 Legit 01 — <span class="chip chip-low">12</span>
+            <div style="height:4px;background:#CCC;border-radius:2px;margin-top:4px;width:12%;"></div>
+          </div>
+          <div style="padding:8px;font-size:11px;">
+            ACC-08 Legit 02 — <span class="chip chip-low">8</span>
+            <div style="height:4px;background:#CCC;border-radius:2px;margin-top:4px;width:8%;"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right panel: drilldown -->
+      <div class="flex-1">
+        <div class="box-label">Account Drilldown — ACC-02 Mule A1 (PNB) <span class="ann">2</span></div>
+        <div class="box">
+          <div class="flex" style="margin-bottom:12px;">
+            <div style="width:140px;text-align:center;">
+              <div class="gauge-arc">92</div>
+              <div style="font-size:11px;font-weight:600;">Risk Score <span class="ann">3</span></div>
+              <div><span class="chip chip-crit">CRITICAL</span></div>
+            </div>
+            <div class="flex-1">
+              <div class="box-label">Weighted Rule Breakdown <span class="ann">4</span></div>
+              <div class="h-bar"><span style="width:100px;">Pass-through (25%)</span> <div class="h-bar-fill" style="width:230px;background:#333;"></div> <span>25/25</span></div>
+              <div class="h-bar"><span style="width:100px;">Fan-in (20%)</span> <div class="h-bar-fill" style="width:36px;background:#CCC;"></div> <span>4/20</span></div>
+              <div class="h-bar"><span style="width:100px;">Round-figure (15%)</span> <div class="h-bar-fill" style="width:100px;background:#999;"></div> <span>11/15</span></div>
+              <div class="h-bar"><span style="width:100px;">Dormant (20%)</span> <div class="h-bar-fill" style="width:170px;background:#333;"></div> <span>18/20</span></div>
+              <div class="h-bar"><span style="width:100px;">Repeated cpty (10%)</span> <div class="h-bar-fill" style="width:92px;background:#666;"></div> <span>10/10</span></div>
+              <div class="h-bar"><span style="width:100px;">Anomaly (10%)</span> <div class="h-bar-fill" style="width:46px;background:#CCC;"></div> <span>5/10</span></div>
+            </div>
+          </div>
+
+          <div class="box-label">Triggered Indicators <span class="ann">5</span></div>
+          <div style="border:1px solid #CCC;border-radius:4px;padding:8px;margin-bottom:8px;">
+            <div style="font-size:12px;font-weight:600;">Rapid In-Out Transfers</div>
+            <div style="font-size:11px;color:#666;">Reason: 100% of received funds forwarded within 6 minutes of receipt</div>
+            <div style="font-size:10px;margin-top:4px;font-weight:600;">Evidence transactions:</div>
+            <div class="evidence-row">EV-002: CR Rs 1,00,000 at 10:35 | EV-003: DR Rs 50,000 at 10:41 (6 min)</div>
+            <div class="evidence-row">EV-005: CR Rs 2,35,000 at 14:20 | EV-006: DR Rs 1,00,000 at 14:24 (4 min)</div>
+          </div>
+          <div style="border:1px solid #CCC;border-radius:4px;padding:8px;margin-bottom:8px;">
+            <div style="font-size:12px;font-weight:600;">Repeated Counterparty</div>
+            <div style="font-size:11px;color:#666;">Reason: ACC-06 (Mule A5) appears as beneficiary from 3 linked accounts</div>
+            <div class="evidence-row">EV-012, EV-018, EV-024: transfers from ACC-03, ACC-04, ACC-05 to ACC-06</div>
+          </div>
+
+          <div style="border:1px dashed #999;border-radius:4px;padding:8px;margin-top:8px;">
+            <div class="box-label">Supporting Signal: Anomaly Score <span class="ann">6</span></div>
+            <div style="font-size:11px;">Behaviour deviation from baseline: <strong>72%</strong> (high) — account historically had &lt;2 transactions/month; now 15 in 3 days</div>
+          </div>
+
+          <div style="margin-top:8px;font-size:10px;color:#666;border:1px solid #E5E5E5;padding:4px 8px;border-radius:3px;">
+            <span class="ann">7</span> Risk Weights: Pass-through 25% | Fan-in 20% | Round-figure 15% | Dormant 20% | Repeated Cpty 10% | Anomaly 10% — shown openly for transparency
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="footer-banner">Synthetic demo data only. No real personal data.</div>
+  <div class="ann-list">
+    <div><span class="ann">1</span> Ranked Account List — sorted by risk score descending, mini score bars</div>
+    <div><span class="ann">2</span> Drilldown Panel — opens on account click</div>
+    <div><span class="ann">3</span> Risk Score Gauge — 0-100 arc with risk label</div>
+    <div><span class="ann">4</span> Weighted Rule Breakdown — horizontal bars showing contribution of each rule</div>
+    <div><span class="ann">5</span> Triggered Indicators — each with plain-language reason and evidence transaction rows</div>
+    <div><span class="ann">6</span> Anomaly Score — supporting signal from baseline deviation, shown separately</div>
+    <div><span class="ann">7</span> Risk Weight Transparency — weights shown openly in info tooltip</div>
+  </div>
+</div>
+
+<!-- ===== PAGE 4: MONEY-TRAIL GRAPH ===== -->
+<div class="page">
+  <div class="page-num">Page 4 of 10</div>
+  <div class="page-title">Screen 4: Money-Trail Graph</div>
+  <div class="sidebar">
+    <div class="sidebar-logo">MuleTrace</div>
+    <div class="sidebar-item">1. Dashboard</div>
+    <div class="sidebar-item">2. Ingestion &amp; Ledger</div>
+    <div class="sidebar-item">3. Mule Risk Analysis</div>
+    <div class="sidebar-item active">4. Money-Trail Graph</div>
+    <div class="sidebar-item">5. Domain &amp; IP Intel</div>
+    <div class="sidebar-item">6. Timestamp Correlation</div>
+    <div class="sidebar-item">7. Relationship Graph</div>
+    <div class="sidebar-item">8. Reports &amp; Requests</div>
+  </div>
+  <div class="main">
+    <div class="flex" style="margin-bottom:12px;align-items:center;">
+      <div class="search-bar" style="flex:1;margin:0;"><span class="icon"></span> Enter Victim UTR (e.g. UTR20240417001) <span class="ann">1</span></div>
+      <div class="btn btn-dark" style="margin-left:8px;">Search</div>
+    </div>
+
+    <div class="flex">
+      <div class="flex-1">
+        <!-- Graph area -->
+        <div class="graph-placeholder" style="height:420px;position:relative;">
+          <div style="position:absolute;top:50%;left:15%;transform:translate(-50%,-50%);">
+            <div class="node-circle" style="width:50px;height:50px;background:#E5E5E5;border-color:#333;">V01</div>
+            <div style="font-size:9px;text-align:center;margin-top:2px;">Victim</div>
+          </div>
+          <div style="position:absolute;top:50%;left:35%;transform:translate(-50%,-50%);">
+            <div class="node-circle" style="width:44px;height:44px;background:#999;border-color:#333;">A1</div>
+            <div style="font-size:9px;text-align:center;margin-top:2px;">Mule A1</div>
+          </div>
+          <div style="position:absolute;top:25%;left:55%;transform:translate(-50%,-50%);">
+            <div class="node-circle" style="width:38px;height:38px;background:#999;border-color:#666;">A2</div>
+            <div style="font-size:9px;text-align:center;margin-top:2px;">Mule A2</div>
+          </div>
+          <div style="position:absolute;top:50%;left:55%;transform:translate(-50%,-50%);">
+            <div class="node-circle" style="width:38px;height:38px;background:#999;border-color:#666;">A3</div>
+            <div style="font-size:9px;text-align:center;margin-top:2px;">Mule A3</div>
+          </div>
+          <div style="position:absolute;top:75%;left:55%;transform:translate(-50%,-50%);">
+            <div class="node-circle" style="width:38px;height:38px;background:#999;border-color:#666;">A4</div>
+            <div style="font-size:9px;text-align:center;margin-top:2px;">Mule A4</div>
+          </div>
+          <div style="position:absolute;top:50%;left:75%;transform:translate(-50%,-50%);">
+            <div class="node-circle" style="width:52px;height:52px;background:#666;border-color:#333;">A5</div>
+            <div style="font-size:9px;text-align:center;margin-top:2px;">Consolidator</div>
+          </div>
+          <div style="position:absolute;top:30%;left:90%;transform:translate(-50%,-50%);">
+            <div class="node-circle" style="width:30px;height:30px;background:#CCC;">ATM</div>
+            <div style="font-size:9px;text-align:center;margin-top:2px;">Cash Out</div>
+          </div>
+          <div style="position:absolute;top:70%;left:90%;transform:translate(-50%,-50%);">
+            <div class="node-circle" style="width:30px;height:30px;background:#CCC;">CEX</div>
+            <div style="font-size:9px;text-align:center;margin-top:2px;">Crypto</div>
+          </div>
+          <div style="position:absolute;bottom:8px;left:8px;font-size:10px;color:#999;"><span class="ann">2</span> Interactive Cytoscape.js graph — nodes sized by amount, coloured by taint</div>
+        </div>
+
+        <div class="flex" style="margin-top:8px;align-items:center;gap:16px;">
+          <div style="font-size:11px;"><span class="ann">3</span> Hops:</div>
+          <div class="slider" style="width:200px;"><div class="slider-thumb" style="left:50%;"></div></div>
+          <div class="btn">Expand Next Hop</div>
+          <div style="flex:1;"></div>
+          <div class="btn">Cose</div> <div class="btn">Dagre</div> <div class="btn">Circle</div> <span class="ann">4</span>
+          <div class="btn">Export PNG</div> <span class="ann">5</span>
+        </div>
+
+        <div class="flex" style="margin-top:8px;gap:16px;font-size:10px;">
+          <div><span class="ann">6</span> Legend:</div>
+          <div><span style="display:inline-block;width:14px;height:14px;background:#333;border-radius:50%;vertical-align:middle;"></span> Critical (taint &gt;0.7)</div>
+          <div><span style="display:inline-block;width:14px;height:14px;background:#666;border-radius:50%;vertical-align:middle;"></span> High (0.5-0.7)</div>
+          <div><span style="display:inline-block;width:14px;height:14px;background:#999;border-radius:50%;vertical-align:middle;"></span> Medium (0.3-0.5)</div>
+          <div><span style="display:inline-block;width:14px;height:14px;background:#CCC;border-radius:50%;vertical-align:middle;"></span> Low (&lt;0.3)</div>
+        </div>
+      </div>
+
+      <div style="width:260px;">
+        <div class="drawer">
+          <div class="box-label">Node Details <span class="ann">7</span></div>
+          <div style="font-size:11px;margin-bottom:4px;"><strong>ACC-02 Mule A1</strong></div>
+          <div style="font-size:10px;color:#666;margin-bottom:4px;">Bank: PNB | Case: CASE-A</div>
+          <div style="font-size:10px;margin-bottom:4px;">Risk Score: <span class="chip chip-crit">92</span></div>
+          <div style="font-size:10px;margin-bottom:4px;">Taint Level: 0.85</div>
+          <div style="font-size:10px;margin-bottom:4px;">Total Handled: Rs 4,85,000</div>
+          <div class="box-label" style="margin-top:8px;">Counterparties</div>
+          <div style="font-size:10px;">IN: ACC-01 (Rs 4,85,000)</div>
+          <div style="font-size:10px;">OUT: ACC-03, ACC-04, ACC-05</div>
+          <div class="box-label" style="margin-top:8px;">Timestamps</div>
+          <div style="font-size:10px;">First: 2024-04-17 10:35</div>
+          <div style="font-size:10px;">Last: 2024-04-17 14:28</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="footer-banner">Synthetic demo data only. No real personal data.</div>
+  <div class="ann-list">
+    <div><span class="ann">1</span> UTR Search — enter or pick a victim UTR to seed the graph</div>
+    <div><span class="ann">2</span> Interactive Graph — Cytoscape.js, nodes sized by amount, coloured by taint decay</div>
+    <div><span class="ann">3</span> Hop Slider — control graph expansion depth (1..N hops)</div>
+    <div><span class="ann">4</span> Layout Toggle — switch between cose, dagre, circle layouts</div>
+    <div><span class="ann">5</span> Export PNG — download graph as image</div>
+    <div><span class="ann">6</span> Legend — taint level colour key with thresholds</div>
+    <div><span class="ann">7</span> Side Drawer — click any node/edge for details, risk score, counterparties, times</div>
+  </div>
+</div>
+
+<!-- ===== PAGE 5: DOMAIN & IP INTELLIGENCE ===== -->
+<div class="page">
+  <div class="page-num">Page 5 of 10</div>
+  <div class="page-title">Screen 5: Domain &amp; IP Intelligence</div>
+  <div class="sidebar">
+    <div class="sidebar-logo">MuleTrace</div>
+    <div class="sidebar-item">1. Dashboard</div>
+    <div class="sidebar-item">2. Ingestion &amp; Ledger</div>
+    <div class="sidebar-item">3. Mule Risk Analysis</div>
+    <div class="sidebar-item">4. Money-Trail Graph</div>
+    <div class="sidebar-item active">5. Domain &amp; IP Intel</div>
+    <div class="sidebar-item">6. Timestamp Correlation</div>
+    <div class="sidebar-item">7. Relationship Graph</div>
+    <div class="sidebar-item">8. Reports &amp; Requests</div>
+  </div>
+  <div class="main">
+    <div class="search-bar"><span class="icon"></span> Search domain or IP</div>
+    <div style="font-size:12px;font-weight:600;margin-bottom:8px;">Domain: secure-trade-india.example <span class="ann">1</span></div>
+    <div class="flex" style="margin-bottom:12px;">
+      <div class="flex-1 box">
+        <div class="box-label">RDAP / WHOIS <span class="ann">2</span></div>
+        <div style="font-size:10px;">Registrar: PrivacyShield Registrar</div>
+        <div style="font-size:10px;">Reseller: BulkDomains Reseller</div>
+        <div style="font-size:10px;">Created: 2024-03-15</div>
+        <div style="font-size:10px;">Expires: 2025-03-15</div>
+        <div style="font-size:10px;">Privacy Protected: <strong>Yes</strong></div>
+        <div class="locked" style="margin-top:8px;">
+          <span class="lock-icon">[Locked]</span>
+          <span>Registrant details: Obtainable only through the applicable lawful process</span>
+          <span class="btn" style="margin-left:auto;">Draft Request</span>
+          <span class="ann">3</span>
+        </div>
+      </div>
+      <div class="flex-1 box">
+        <div class="box-label">DNS Records <span class="ann">4</span></div>
+        <div style="font-size:10px;">A: 203.0.113.10</div>
+        <div style="font-size:10px;">AAAA: (none)</div>
+        <div style="font-size:10px;">MX: mail.secure-trade-india.example</div>
+        <div style="font-size:10px;">NS: ns1.shady-hosting.example, ns2.shady-hosting.example</div>
+        <div style="font-size:10px;">TXT: "v=spf1 include:_spf.shady-hosting.example ~all"</div>
+        <div style="font-size:10px;">CNAME: (none)</div>
+      </div>
+    </div>
+    <div class="flex" style="margin-bottom:12px;">
+      <div class="flex-1 box">
+        <div class="box-label">SSL / Certificate Transparency <span class="ann">5</span></div>
+        <div style="font-size:10px;">Issuer: Let's Encrypt Authority X3</div>
+        <div style="font-size:10px;">Valid: 2024-03-16 to 2024-06-14</div>
+        <div style="font-size:10px;">Serial: 03:AB:CD:EF:12:34</div>
+        <div style="font-size:10px;margin-top:4px;">CT Log Entry: 2024-03-16 02:15 UTC</div>
+      </div>
+      <div class="flex-1 box">
+        <div class="box-label">Subdomains &amp; Related <span class="ann">6</span></div>
+        <div style="font-size:10px;">app.secure-trade-india.example</div>
+        <div style="font-size:10px;">api.secure-trade-india.example</div>
+        <div style="font-size:10px;">admin.secure-trade-india.example</div>
+        <div style="font-size:10px;margin-top:6px;color:#666;">Related: payment-gateway-verify.example (same ASN)</div>
+      </div>
+    </div>
+    <div class="flex" style="margin-bottom:12px;">
+      <div class="flex-1 box">
+        <div class="box-label">IP Ownership <span class="ann">7</span></div>
+        <div style="font-size:10px;">IP: 203.0.113.10</div>
+        <div style="font-size:10px;">ASN: AS64500 — ShadyCloud Hosting</div>
+        <div style="font-size:10px;">ISP/Provider: ShadyCloud VPS</div>
+        <div style="font-size:10px;">Region: Mumbai, MH <span class="badge">Indicative, not proof of identity or location</span> <span class="ann">8</span></div>
+        <div style="font-size:10px;">Reverse DNS: vps-10.shadycloud.example</div>
+        <div style="font-size:10px;">IPv4: 203.0.113.10 | IPv6: (none)</div>
+        <div style="font-size:10px;">Tor/VPN/Proxy: No indicator <span class="badge">Source: public feed</span></div>
+      </div>
+      <div class="flex-1">
+        <div class="box" style="margin-bottom:8px;">
+          <div class="box-label">Historical DNS / IP</div>
+          <div style="font-size:10px;color:#999;font-style:italic;">Good-to-have — Phase 2</div>
+        </div>
+        <div class="box">
+          <div class="box-label">Infra Watchlist (Phase 2)</div>
+          <div style="font-size:10px;color:#999;font-style:italic;">Passive re-checks: new CT certs, DNS/NS changes, expiry monitoring</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="footer-banner">Synthetic demo data only. No real personal data.</div>
+  <div class="ann-list">
+    <div><span class="ann">1</span> Domain selector / search</div>
+    <div><span class="ann">2</span> RDAP/WHOIS — registrar, reseller, dates, privacy flag</div>
+    <div><span class="ann">3</span> Locked KYC — subscriber data obtainable only through lawful process, with Draft Request button</div>
+    <div><span class="ann">4</span> DNS Records — A, AAAA, MX, NS, TXT, CNAME</div>
+    <div><span class="ann">5</span> SSL / Certificate Transparency entries</div>
+    <div><span class="ann">6</span> Discovered subdomains and related domains</div>
+    <div><span class="ann">7</span> IP Ownership — ASN, ISP, region, reverse DNS, Tor/VPN indicator</div>
+    <div><span class="ann">8</span> "Indicative" badge — always shown on geolocation/hosting fields</div>
+  </div>
+</div>
+
+<!-- ===== PAGE 6: TIMESTAMP CORRELATION ===== -->
+<div class="page">
+  <div class="page-num">Page 6 of 10</div>
+  <div class="page-title">Screen 6: Timestamp Correlation</div>
+  <div class="sidebar">
+    <div class="sidebar-logo">MuleTrace</div>
+    <div class="sidebar-item">1. Dashboard</div>
+    <div class="sidebar-item">2. Ingestion &amp; Ledger</div>
+    <div class="sidebar-item">3. Mule Risk Analysis</div>
+    <div class="sidebar-item">4. Money-Trail Graph</div>
+    <div class="sidebar-item">5. Domain &amp; IP Intel</div>
+    <div class="sidebar-item active">6. Timestamp Correlation</div>
+    <div class="sidebar-item">7. Relationship Graph</div>
+    <div class="sidebar-item">8. Reports &amp; Requests</div>
+  </div>
+  <div class="main">
+    <div class="search-bar"><span class="icon"></span> Global Search</div>
+    <div class="flex" style="margin-bottom:8px;align-items:center;">
+      <div style="font-size:12px;font-weight:600;">Timeline View</div>
+      <div style="flex:1;"></div>
+      <div class="btn" style="margin-right:4px;background:#333;color:#fff;">IST</div>
+      <div class="btn">UTC</div>
+      <span class="ann">1</span>
+    </div>
+
+    <div class="box" style="margin-bottom:12px;">
+      <div class="box-label">Transaction Events <span class="ann">2</span></div>
+      <div style="position:relative;height:60px;background:#F5F5F5;border-radius:4px;">
+        <div style="position:absolute;bottom:0;left:0;right:0;height:1px;background:#CCC;"></div>
+        <div style="position:absolute;left:5%;bottom:0;width:4px;height:30px;background:#666;border-radius:2px;" title="TXN 10:30"></div>
+        <div style="position:absolute;left:8%;bottom:0;width:4px;height:35px;background:#666;border-radius:2px;" title="TXN 10:35"></div>
+        <div style="position:absolute;left:10%;bottom:0;width:4px;height:25px;background:#999;border-radius:2px;" title="TXN 10:41"></div>
+        <div style="position:absolute;left:25%;bottom:0;width:4px;height:40px;background:#333;border-radius:2px;" title="TXN 14:20"></div>
+        <div style="position:absolute;left:28%;bottom:0;width:4px;height:38px;background:#333;border-radius:2px;" title="TXN 14:24"></div>
+        <div style="position:absolute;left:55%;bottom:0;width:4px;height:20px;background:#999;border-radius:2px;" title="TXN Day 10"></div>
+        <div style="position:absolute;left:70%;bottom:0;width:4px;height:28px;background:#666;border-radius:2px;" title="TXN Day 20"></div>
+        <div style="position:absolute;left:85%;bottom:0;width:4px;height:22px;background:#999;border-radius:2px;" title="TXN Day 25"></div>
+        <div style="position:absolute;left:0;bottom:-16px;font-size:9px;color:#999;">Apr 17</div>
+        <div style="position:absolute;left:50%;bottom:-16px;font-size:9px;color:#999;">May 1</div>
+        <div style="position:absolute;right:0;bottom:-16px;font-size:9px;color:#999;">Jun 15</div>
+      </div>
+    </div>
+
+    <div class="box" style="margin-bottom:12px;margin-top:24px;">
+      <div class="box-label">Infrastructure Events <span class="ann">3</span></div>
+      <div style="position:relative;height:60px;background:#F5F5F5;border-radius:4px;">
+        <div style="position:absolute;bottom:0;left:0;right:0;height:1px;background:#CCC;"></div>
+        <div style="position:absolute;left:2%;bottom:10px;font-size:9px;color:#333;border:1px solid #999;padding:1px 4px;border-radius:2px;background:#fff;">Domain registered</div>
+        <div style="position:absolute;left:3%;bottom:0;width:4px;height:40px;background:#333;border-radius:2px;"></div>
+        <div style="position:absolute;left:4%;bottom:10px;font-size:9px;color:#333;border:1px solid #999;padding:1px 4px;border-radius:2px;background:#fff;top:2px;">SSL cert issued</div>
+        <div style="position:absolute;left:20%;bottom:0;width:4px;height:30px;background:#666;border-radius:2px;"></div>
+        <div style="position:absolute;left:21%;bottom:10px;font-size:9px;color:#333;border:1px solid #999;padding:1px 4px;border-radius:2px;background:#fff;">DNS A record change</div>
+        <div style="position:absolute;left:60%;bottom:0;width:4px;height:25px;background:#999;border-radius:2px;"></div>
+        <div style="position:absolute;left:61%;bottom:10px;font-size:9px;color:#333;border:1px solid #999;padding:1px 4px;border-radius:2px;background:#fff;">New IP seen</div>
+      </div>
+    </div>
+
+    <div class="box" style="margin-bottom:12px;margin-top:24px;">
+      <div class="box-label">Correlation Example <span class="ann">4</span></div>
+      <div style="font-size:11px;padding:8px;border:1px solid #999;border-radius:4px;background:#FAFAFA;">
+        <strong>Transaction:</strong> Rs 1,00,000 from Victim to Mule A1 at 2024-04-17 10:30 IST<br>
+        <strong>IP Allocation:</strong> 203.0.113.10 assigned to ShadyCloud VPS from 2024-03-15 to present<br>
+        <strong>Overlap:</strong> Transaction timestamp falls within IP allocation window<br>
+        <div style="margin-top:6px;padding:4px 8px;background:#E5E5E5;border-radius:3px;font-weight:600;">
+          This is a lead for further investigation, not proof of a connection <span class="ann">5</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="caveat" style="margin-top:12px;">
+      <div style="font-size:11px;font-weight:600;margin-bottom:4px;">Dynamic &amp; Shared IP Caveat <span class="ann">6</span></div>
+      <div style="font-size:10px;">IP addresses may be dynamically assigned (DHCP) or shared among multiple users (CGNAT, cloud hosting). An IP address at a given time does not definitively identify a single user or device. ISP/hosting provider records obtainable through lawful process may narrow attribution. All IP-based correlations shown here are leads, not conclusions.</div>
+    </div>
+  </div>
+  <div class="footer-banner">Synthetic demo data only. No real personal data.</div>
+  <div class="ann-list">
+    <div><span class="ann">1</span> Time Zone Toggle — IST / UTC</div>
+    <div><span class="ann">2</span> Transaction Timeline — bar heights proportional to amount</div>
+    <div><span class="ann">3</span> Infrastructure Events — domain registration, SSL certs, DNS changes, IP sightings</div>
+    <div><span class="ann">4</span> Correlation Example — transaction time vs IP allocation window</div>
+    <div><span class="ann">5</span> Lead Disclaimer — clearly states correlation is a lead, not proof</div>
+    <div><span class="ann">6</span> IP Caveat Panel — explains CGNAT, DHCP, shared hosting limitations</div>
+  </div>
+</div>
+
+<!-- ===== PAGE 7: RELATIONSHIP GRAPH (CROSS-CASE) ===== -->
+<div class="page">
+  <div class="page-num">Page 7 of 10</div>
+  <div class="page-title">Screen 7: Relationship Graph (Cross-Case)</div>
+  <div class="sidebar">
+    <div class="sidebar-logo">MuleTrace</div>
+    <div class="sidebar-item">1. Dashboard</div>
+    <div class="sidebar-item">2. Ingestion &amp; Ledger</div>
+    <div class="sidebar-item">3. Mule Risk Analysis</div>
+    <div class="sidebar-item">4. Money-Trail Graph</div>
+    <div class="sidebar-item">5. Domain &amp; IP Intel</div>
+    <div class="sidebar-item">6. Timestamp Correlation</div>
+    <div class="sidebar-item active">7. Relationship Graph</div>
+    <div class="sidebar-item">8. Reports &amp; Requests</div>
+  </div>
+  <div class="main">
+    <div class="search-bar"><span class="icon"></span> Global Search</div>
+    <div class="flex" style="margin-bottom:8px;align-items:center;gap:12px;">
+      <div style="font-size:11px;font-weight:600;">Filter by node type: <span class="ann">1</span></div>
+      <label style="font-size:10px;"><input type="checkbox" checked disabled> Bank Accounts</label>
+      <label style="font-size:10px;"><input type="checkbox" checked disabled> Domains</label>
+      <label style="font-size:10px;"><input type="checkbox" checked disabled> IPs</label>
+      <label style="font-size:10px;"><input type="checkbox" checked disabled> Phones</label>
+      <label style="font-size:10px;"><input type="checkbox" checked disabled> UPI IDs</label>
+      <label style="font-size:10px;"><input type="checkbox" checked disabled> Name Servers</label>
+      <label style="font-size:10px;"><input type="checkbox" checked disabled> UTRs</label>
+    </div>
+
+    <div class="flex">
+      <div class="flex-1">
+        <div class="graph-placeholder" style="height:400px;position:relative;">
+          <!-- Case A cluster -->
+          <div style="position:absolute;top:10px;left:10px;border:1.5px dashed #999;border-radius:8px;padding:8px;width:45%;height:85%;">
+            <div style="font-size:10px;font-weight:600;color:#666;">CASE A <span class="ann">2</span></div>
+            <div style="position:absolute;top:60px;left:30px;" class="node-rect">ACC-01</div>
+            <div style="position:absolute;top:60px;left:100px;" class="node-rect">ACC-02</div>
+            <div style="position:absolute;top:120px;left:40px;" class="node-rect">ACC-03</div>
+            <div style="position:absolute;top:120px;left:120px;" class="node-rect">ACC-04</div>
+            <div style="position:absolute;top:180px;left:30px;" class="node-rect">ACC-05</div>
+            <div style="position:absolute;top:180px;left:110px;" class="node-rect">ACC-06</div>
+            <div style="position:absolute;top:240px;left:60px;"><div class="node-diamond"><span>IP1</span></div></div>
+            <div style="position:absolute;top:280px;left:140px;font-size:9px;border:1px solid #666;padding:2px 6px;border-radius:3px;background:#E5E5E5;">secure-trade.ex</div>
+          </div>
+
+          <!-- Shared elements (highlighted) -->
+          <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;">
+            <div style="border:3px solid #333;border-radius:8px;padding:10px;background:#E5E5E5;">
+              <div class="node-rect" style="border-color:#333;border-width:3px;margin-bottom:4px;">ACC-13</div>
+              <div style="font-size:9px;font-weight:700;">SHARED</div>
+              <div style="font-size:8px;color:#666;">ns1.shady-hosting.ex</div>
+              <div style="font-size:8px;color:#666;">AS64500</div>
+            </div>
+            <div style="font-size:10px;margin-top:4px;font-weight:600;"><span class="ann">3</span> Cross-case link</div>
+          </div>
+
+          <!-- Case B cluster -->
+          <div style="position:absolute;top:10px;right:10px;border:1.5px dashed #999;border-radius:8px;padding:8px;width:30%;height:85%;">
+            <div style="font-size:10px;font-weight:600;color:#666;">CASE B</div>
+            <div style="position:absolute;top:60px;left:30px;" class="node-rect">ACC-10</div>
+            <div style="position:absolute;top:120px;left:30px;" class="node-rect">ACC-11</div>
+            <div style="position:absolute;top:180px;left:30px;" class="node-rect">ACC-12</div>
+            <div style="position:absolute;top:180px;left:110px;" class="node-rect">ACC-14</div>
+            <div style="position:absolute;top:240px;left:60px;"><div class="node-diamond"><span>IP2</span></div></div>
+          </div>
+
+          <!-- Legend -->
+          <div style="position:absolute;bottom:8px;left:8px;font-size:9px;color:#666;">
+            <span class="node-rect" style="width:20px;height:12px;font-size:7px;vertical-align:middle;">Acct</span> Bank Account
+            <span class="node-diamond" style="width:14px;height:14px;vertical-align:middle;margin-left:8px;"><span style="font-size:6px;">IP</span></span> IP/Domain
+          </div>
+        </div>
+      </div>
+
+      <div style="width:260px;">
+        <div class="drawer">
+          <div class="box-label">Link Evidence <span class="ann">4</span></div>
+          <div style="font-size:11px;font-weight:600;margin-bottom:6px;">Why are Case A and Case B linked?</div>
+          <div style="font-size:10px;border-bottom:1px solid #CCC;padding:4px 0;">
+            <strong>Shared bank account:</strong> ACC-13 (Shared Account X, BOI) received funds from both Case A (ACC-06) and Case B (ACC-11)
+          </div>
+          <div style="font-size:10px;padding:4px 0;">
+            <strong>Shared name server:</strong> ns1.shady-hosting.example used by both secure-trade-india.example (Case A) and quickinvest-pro.example (Case B)
+          </div>
+          <div style="font-size:10px;padding:4px 0;">
+            <strong>Shared ASN:</strong> AS64500 (ShadyCloud Hosting) hosts infrastructure for both cases
+          </div>
+          <div style="font-size:10px;color:#666;margin-top:8px;">Evidence refs: EV-025, EV-089, EV-102</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="footer-banner">Synthetic demo data only. No real personal data.</div>
+  <div class="ann-list">
+    <div><span class="ann">1</span> Node Type Filters — toggle visibility by entity type</div>
+    <div><span class="ann">2</span> Case Clusters — visual grouping of entities by case</div>
+    <div><span class="ann">3</span> Cross-Case Link Highlight — shared entities bridging cases, visually emphasised</div>
+    <div><span class="ann">4</span> Link Evidence Panel — click any link to see "why these are linked" with evidence references</div>
+  </div>
+</div>
+
+<!-- ===== PAGE 8: REPORTS & LAWFUL INFORMATION REQUESTS ===== -->
+<div class="page">
+  <div class="page-num">Page 8 of 10</div>
+  <div class="page-title">Screen 8: Reports &amp; Lawful Information Requests</div>
+  <div class="sidebar">
+    <div class="sidebar-logo">MuleTrace</div>
+    <div class="sidebar-item">1. Dashboard</div>
+    <div class="sidebar-item">2. Ingestion &amp; Ledger</div>
+    <div class="sidebar-item">3. Mule Risk Analysis</div>
+    <div class="sidebar-item">4. Money-Trail Graph</div>
+    <div class="sidebar-item">5. Domain &amp; IP Intel</div>
+    <div class="sidebar-item">6. Timestamp Correlation</div>
+    <div class="sidebar-item">7. Relationship Graph</div>
+    <div class="sidebar-item active">8. Reports &amp; Requests</div>
+  </div>
+  <div class="main">
+    <div class="search-bar"><span class="icon"></span> Global Search</div>
+
+    <div class="flex">
+      <div class="flex-1">
+        <div class="box" style="margin-bottom:12px;">
+          <div class="box-label">Report Preview <span class="ann">1</span></div>
+          <div style="border:1px solid #CCC;padding:12px;border-radius:4px;background:#fff;">
+            <div style="text-align:center;font-size:14px;font-weight:700;margin-bottom:8px;">CASE REPORT — CASE-2024-A-0417</div>
+            <div style="text-align:center;font-size:11px;color:#666;margin-bottom:12px;">Financial Crime Investigation — MuleTrace Analysis</div>
+            <div style="font-size:11px;font-weight:600;border-bottom:1px solid #CCC;padding-bottom:4px;margin-bottom:6px;">1. Case Summary</div>
+            <div class="placeholder w90"></div><div class="placeholder w70"></div>
+            <div style="font-size:11px;font-weight:600;border-bottom:1px solid #CCC;padding:4px 0;margin:6px 0;">2. Flagged Accounts with Reasons <span class="ann">2</span></div>
+            <div class="placeholder w90"></div><div class="placeholder w70"></div><div class="placeholder w50"></div>
+            <div style="font-size:11px;font-weight:600;border-bottom:1px solid #CCC;padding:4px 0;margin:6px 0;">3. Money-Trail Diagram</div>
+            <div style="height:40px;background:#F5F5F5;border:1px solid #CCC;border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:10px;color:#999;">[Money-trail graph image embedded here]</div>
+            <div style="font-size:11px;font-weight:600;border-bottom:1px solid #CCC;padding:4px 0;margin:6px 0;">4. Infrastructure Findings</div>
+            <div class="placeholder w90"></div><div class="placeholder w50"></div>
+            <div style="font-size:11px;font-weight:600;border-bottom:1px solid #CCC;padding:4px 0;margin:6px 0;">5. Linked Entities</div>
+            <div class="placeholder w70"></div>
+            <div style="font-size:11px;font-weight:600;border-bottom:1px solid #CCC;padding:4px 0;margin:6px 0;">6. Evidence Index</div>
+            <div class="placeholder w90"></div><div class="placeholder w90"></div>
+            <div style="font-size:11px;font-weight:600;border-bottom:1px solid #CCC;padding:4px 0;margin:6px 0;">7. Limitations <span class="ann">3</span></div>
+            <div style="font-size:10px;color:#666;">All geolocation data is indicative. IP-based correlations are leads. Subscriber data not included (requires lawful process). No active scanning performed.</div>
+          </div>
+        </div>
+
+        <div class="flex" style="margin-bottom:12px;gap:8px;">
+          <div class="btn btn-dark"><span class="ann">4</span> Download PDF (Print)</div>
+          <div class="btn btn-dark">Download Excel (CSV)</div>
+        </div>
+      </div>
+
+      <div style="width:400px;">
+        <div class="box" style="margin-bottom:12px;">
+          <div class="box-label">Auto-Drafted Information Requests <span class="badge">Good-to-have</span> <span class="ann">5</span></div>
+
+          <div style="font-size:11px;font-weight:600;margin:8px 0 4px;">To: Bank (re: Account ACC-02)</div>
+          <div class="template-area">
+            To: The Branch Manager, PNB [Branch]<br>
+            Subject: Request for account information<br><br>
+            Account Number: ACC-02<br>
+            Period: 2024-04-15 to 2024-05-15<br>
+            Time Zone: IST (UTC+5:30)<br><br>
+            Requested: Account holder details, KYC documents, transaction records, login/access logs...
+          </div>
+
+          <div style="font-size:11px;font-weight:600;margin:8px 0 4px;">To: Domain Registrar <span class="ann">6</span></div>
+          <div class="template-area">
+            To: PrivacyShield Registrar<br>
+            Domain: secure-trade-india.example<br>
+            Request: Registrant identity behind privacy protection<br>
+            Reference timestamp: 2024-04-17 10:30 IST
+          </div>
+
+          <div style="font-size:11px;font-weight:600;margin:8px 0 4px;">To: Cloud/Hosting Provider</div>
+          <div class="template-area">
+            To: ShadyCloud Hosting (AS64500)<br>
+            IP: 203.0.113.10<br>
+            Exact timestamp: 2024-04-17 10:30:00 IST (UTC+5:30)<br>
+            Request: Subscriber identity and access records for this IP at the specified time
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="footer-banner">Synthetic demo data only. No real personal data.</div>
+  <div class="ann-list">
+    <div><span class="ann">1</span> Report Preview — structured sections matching evidence standards</div>
+    <div><span class="ann">2</span> Flagged Accounts — each with reasons linked to evidence references</div>
+    <div><span class="ann">3</span> Limitations Section — explicit caveats on data sourcing and attribution</div>
+    <div><span class="ann">4</span> Export Buttons — PDF via window.print, Excel via CSV download</div>
+    <div><span class="ann">5</span> Information Request Templates — auto-drafted, editable, prefilled with identifiers</div>
+    <div><span class="ann">6</span> Template Details — includes exact IP, timestamp, time zone for lawful requests</div>
+  </div>
+</div>
+
+<!-- ===== PAGE 9: USER FLOW DIAGRAM ===== -->
+<div class="page">
+  <div class="page-num">Page 9 of 10</div>
+  <div class="page-title">User Flow Diagram</div>
+  <div style="display:flex;flex-direction:column;align-items:center;padding:40px 20px;">
+    <div style="display:flex;align-items:center;gap:16px;margin-bottom:32px;">
+      <div class="flow-box" style="background:#333;color:#fff;">Login / Authentication</div>
+      <div class="arrow">&rarr;</div>
+      <div class="flow-box">Watchlist Dashboard</div>
+      <div class="arrow">&rarr;</div>
+      <div class="flow-diamond"><span>New case<br>or existing?</span></div>
+    </div>
+
+    <div style="display:flex;gap:80px;margin-bottom:32px;">
+      <div style="display:flex;flex-direction:column;align-items:center;gap:16px;">
+        <div style="font-size:11px;color:#666;">&darr; New case</div>
+        <div class="flow-box">Upload Statement</div>
+        <div class="arrow" style="transform:rotate(90deg);">&rarr;</div>
+        <div class="flow-box">Ingestion &amp; Normalisation</div>
+        <div class="arrow" style="transform:rotate(90deg);">&rarr;</div>
+        <div class="flow-box">Rule Engine Processing</div>
+      </div>
+      <div style="display:flex;flex-direction:column;align-items:center;gap:16px;">
+        <div style="font-size:11px;color:#666;">&darr; Existing case</div>
+        <div class="flow-box">Select Case</div>
+        <div class="arrow" style="transform:rotate(90deg);">&rarr;</div>
+        <div class="flow-box">Review Alerts</div>
+      </div>
+    </div>
+
+    <div style="width:60%;border-top:2px solid #999;margin:16px 0;padding-top:16px;text-align:center;">
+      <div style="font-size:11px;color:#666;margin-bottom:16px;">Both paths converge</div>
+    </div>
+
+    <div style="display:flex;align-items:center;gap:16px;margin-bottom:24px;">
+      <div class="flow-box">Mule Risk Analysis</div>
+      <div class="arrow">&rarr;</div>
+      <div class="flow-box">Money-Trail Graph</div>
+      <div class="arrow">&rarr;</div>
+      <div class="flow-box">Domain &amp; IP Intel</div>
+    </div>
+
+    <div style="display:flex;align-items:center;gap:16px;margin-bottom:24px;">
+      <div class="flow-box">Timestamp Correlation</div>
+      <div class="arrow">&rarr;</div>
+      <div class="flow-box">Relationship Graph</div>
+      <div class="arrow">&rarr;</div>
+      <div class="flow-box" style="background:#333;color:#fff;">Generate Report</div>
+    </div>
+
+    <div style="display:flex;align-items:center;gap:16px;margin-top:16px;">
+      <div class="flow-box">Draft Information Requests</div>
+      <div class="arrow">&rarr;</div>
+      <div class="flow-box" style="border-style:dashed;">Send via Lawful Process</div>
+      <div class="arrow">&rarr;</div>
+      <div class="flow-box" style="border-style:dashed;">Receive &amp; Append Data</div>
+      <div class="arrow">&rarr;</div>
+      <div style="font-size:11px;color:#666;">(cycle back to analysis)</div>
+    </div>
+
+    <div style="margin-top:24px;font-size:11px;color:#666;border:1px solid #CCC;padding:12px;border-radius:4px;width:60%;text-align:center;">
+      Replay Simulator available on Dashboard for demo — streams synthetic transactions to demonstrate the full flow in real time
+    </div>
+  </div>
+  <div class="footer-banner">Synthetic demo data only. No real personal data.</div>
+</div>
+
+<!-- ===== PAGE 10: SYSTEM ARCHITECTURE ===== -->
+<div class="page">
+  <div class="page-num">Page 10 of 10</div>
+  <div class="page-title">System Architecture Diagram</div>
+  <div style="padding:20px;">
+    <div style="text-align:center;font-size:12px;font-weight:700;margin-bottom:16px;padding:8px;border:2px solid #333;border-radius:4px;background:#E5E5E5;">
+      PASSIVE INTELLIGENCE ONLY — No active scanning or probing of third-party servers
+    </div>
+
+    <div class="flex" style="margin-bottom:16px;">
+      <div class="flex-1 arch-layer">
+        <div class="arch-layer-title">Input Adapters</div>
+        <div class="flex" style="gap:8px;">
+          <div class="box" style="flex:1;text-align:center;font-size:10px;">PDF/Excel Parser</div>
+          <div class="box" style="flex:1;text-align:center;font-size:10px;">CSV/SFTP Watcher</div>
+          <div class="box" style="flex:1;text-align:center;font-size:10px;">API/Webhook Receiver</div>
+          <div class="box" style="flex:1;text-align:center;font-size:10px;border-style:dashed;">Bank Data (Lawful)</div>
+        </div>
+      </div>
+    </div>
+
+    <div style="text-align:center;font-size:16px;margin:8px 0;">&darr;</div>
+
+    <div class="flex" style="margin-bottom:16px;">
+      <div class="flex-1 arch-layer">
+        <div class="arch-layer-title">Processing Pipeline</div>
+        <div class="flex" style="gap:8px;">
+          <div class="box" style="flex:1;text-align:center;font-size:10px;">Normalisation Engine<br><span style="color:#999;">Multi-format to standard schema</span></div>
+          <div class="box" style="flex:1;text-align:center;font-size:10px;">Rule Engine<br><span style="color:#999;">Weighted scoring, incremental</span></div>
+          <div class="box" style="flex:1;text-align:center;font-size:10px;">Graph Engine<br><span style="color:#999;">Transaction graph, structural signals</span></div>
+          <div class="box" style="flex:1;text-align:center;font-size:10px;">Taint Propagation<br><span style="color:#999;">Seed UTR, decay per hop</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div style="text-align:center;font-size:16px;margin:8px 0;">&darr;</div>
+
+    <div class="flex" style="margin-bottom:16px;gap:12px;">
+      <div class="flex-1 arch-layer" style="background:#E5E5E5;">
+        <div class="arch-layer-title">Data Stores</div>
+        <div class="flex" style="gap:8px;">
+          <div class="box" style="flex:1;text-align:center;font-size:10px;">Transaction Ledger</div>
+          <div class="box" style="flex:1;text-align:center;font-size:10px;">Account Registry</div>
+          <div class="box" style="flex:1;text-align:center;font-size:10px;">Infrastructure DB</div>
+          <div class="box" style="flex:1;text-align:center;font-size:10px;">Case &amp; Evidence DB</div>
+        </div>
+      </div>
+    </div>
+
+    <div style="text-align:center;font-size:16px;margin:8px 0;">&darr;</div>
+
+    <div class="flex" style="margin-bottom:16px;">
+      <div class="flex-1 arch-layer">
+        <div class="arch-layer-title">Analysis &amp; Visualisation</div>
+        <div class="flex" style="gap:8px;">
+          <div class="box" style="flex:1;text-align:center;font-size:10px;">Risk Dashboard</div>
+          <div class="box" style="flex:1;text-align:center;font-size:10px;">Money-Trail Graph</div>
+          <div class="box" style="flex:1;text-align:center;font-size:10px;">Timeline Correlator</div>
+          <div class="box" style="flex:1;text-align:center;font-size:10px;">Cross-Case Linker</div>
+        </div>
+      </div>
+    </div>
+
+    <div style="text-align:center;font-size:16px;margin:8px 0;">&darr;</div>
+
+    <div class="flex" style="margin-bottom:16px;">
+      <div class="flex-1 arch-layer">
+        <div class="arch-layer-title">Output</div>
+        <div class="flex" style="gap:8px;">
+          <div class="box" style="flex:1;text-align:center;font-size:10px;">Report Generator<br><span style="color:#999;">PDF, Excel, evidence-indexed</span></div>
+          <div class="box" style="flex:1;text-align:center;font-size:10px;">Information Request Drafter<br><span style="color:#999;">Bank, Registrar, Hosting</span></div>
+          <div class="box" style="flex:1;text-align:center;font-size:10px;">Alert System<br><span style="color:#999;">Threshold-based notifications</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div style="text-align:center;font-size:16px;margin:8px 0;">&darr;</div>
+
+    <div class="flex" style="gap:12px;">
+      <div class="flex-1 arch-layer" style="border-style:dashed;">
+        <div class="arch-layer-title">External Data Sources (Passive Only)</div>
+        <div class="flex" style="gap:8px;">
+          <div class="box" style="flex:1;text-align:center;font-size:10px;border-style:dashed;">RDAP/WHOIS<br><span style="color:#999;">Public registration data</span></div>
+          <div class="box" style="flex:1;text-align:center;font-size:10px;border-style:dashed;">DNS Lookups<br><span style="color:#999;">A, MX, NS, TXT records</span></div>
+          <div class="box" style="flex:1;text-align:center;font-size:10px;border-style:dashed;">CT Logs<br><span style="color:#999;">Certificate Transparency</span></div>
+          <div class="box" style="flex:1;text-align:center;font-size:10px;border-style:dashed;">Public Threat Feeds<br><span style="color:#999;">IP reputation, blocklists</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="footer-banner">Synthetic demo data only. No real personal data.</div>
+</div>
+
+</body>
+</html>
