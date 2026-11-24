@@ -58,6 +58,7 @@ body { font-family:'Segoe UI',system-ui,-apple-system,sans-serif; background:var
 #topbar .search-box { flex:1; display:flex; align-items:center; background:var(--bg-tertiary); border:1px solid var(--border); border-radius:6px; padding:6px 12px; gap:8px; }
 #topbar .search-box input { background:none; border:none; color:var(--text-primary); outline:none; font-size:12px; width:100%; }
 #topbar .case-select { background:var(--bg-tertiary); border:1px solid var(--border); border-radius:6px; padding:6px 12px; color:var(--text-primary); font-size:12px; cursor:pointer; }
+#menu-toggle { display:none; align-items:center; justify-content:center; width:38px; height:38px; border:1px solid var(--border); border-radius:6px; background:var(--bg-tertiary); color:var(--text-primary); cursor:pointer; flex-shrink:0; }
 .screen { display:none; padding:24px; flex:1; }
 .screen.active { display:block; }
 
@@ -98,7 +99,7 @@ table.data-table tr.flagged td { border-left:3px solid var(--risk-critical); }
 .text-muted { color:var(--text-muted); }
 
 /* Synthetic banner */
-#synthetic-banner { background:rgba(236,201,75,.1); border-top:1px solid rgba(236,201,75,.3); padding:6px 24px; text-align:center; font-size:11px; color:var(--warning); position:sticky; bottom:0; z-index:50; margin-left:0; }
+#synthetic-banner { background:rgba(236,201,75,.1); border-top:1px solid rgba(236,201,75,.3); padding:6px 24px; text-align:center; font-size:11px; color:var(--warning); position:relative; z-index:10; margin-left:0; }
 
 /* Replay controls */
 .replay-panel { display:flex; align-items:center; gap:12px; padding:12px 16px; background:var(--bg-tertiary); border:1px solid var(--border); border-radius:8px; }
@@ -175,6 +176,80 @@ table.data-table tr.flagged td { border-left:3px solid var(--risk-critical); }
 @media (max-width:1024px) {
   .kpi-grid { grid-template-columns:repeat(2,1fr); }
   .grid-2 { grid-template-columns:1fr; }
+  .grid-3 { grid-template-columns:repeat(2,1fr); }
+  .side-drawer { width:240px; }
+  .screen { padding:20px; }
+  .flex { flex-wrap:wrap; }
+  #cy-money { height:420px !important; }
+  #cy-rel { height:420px !important; }
+}
+
+@media (max-width:900px) {
+  :root { --sidebar-w: 0px; }
+  #sidebar {
+    width:260px;
+    transform:translateX(-100%);
+    transition:transform .2s ease;
+    box-shadow:12px 0 30px rgba(0,0,0,.35);
+  }
+  body.sidebar-open #sidebar { transform:translateX(0); }
+  #main { margin-left:0; width:100%; }
+  #topbar { padding:10px 12px; }
+  .screen { padding:16px 12px; }
+  #menu-toggle { display:inline-flex !important; }
+  .kpi-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  .grid-2,
+  .grid-3 { grid-template-columns:1fr; }
+  .flex { width:100%; }
+  .flex > * { min-width:0; }
+  #screen-dashboard .flex > [style*="width:"],
+  #screen-ledger .flex > [style*="width:"],
+  #screen-risk .flex > [style*="width:"],
+  #screen-reports .flex > [style*="width:"],
+  #screen-moneygraph .flex > [style*="width:"],
+  #screen-relgraph .flex > [style*="width:"],
+  .side-drawer {
+    width:100% !important;
+  }
+  .flex-1 { flex-basis:100%; }
+  .adapter-card { flex:1 1 calc(50% - 12px) !important; }
+  table.data-table { min-width:680px; }
+  #report-preview table.data-table { min-width:600px; }
+  .side-drawer { border-left:0; border-radius:8px; max-height:none; }
+  #cy-money { height:360px !important; }
+  #cy-rel { height:380px !important; }
+  .modal { width:calc(100% - 24px); max-height:85vh; }
+  .toast { left:12px; right:12px; bottom:12px; text-align:center; }
+}
+
+@media (max-width:560px) {
+  body { font-size:12px; }
+  #topbar { flex-wrap:wrap; gap:8px; }
+  #topbar .search-box { flex:1 1 calc(100% - 52px); min-width:0; }
+  #topbar .case-select { width:100%; }
+  .screen { padding:12px 8px; }
+  .kpi-grid { grid-template-columns:1fr; gap:8px; }
+  .kpi-card { padding:12px; }
+  .kpi-val { font-size:26px; }
+  .card { padding:12px; }
+  .flex { gap:8px; }
+  .flex > * { flex:1 1 100% !important; }
+  .adapter-card { max-width:none; }
+  .replay-panel { padding:10px; }
+  .replay-panel .speed-slider { width:100%; }
+  .dropzone { padding:24px 12px; }
+  #ledger-search { width:100% !important; }
+  .case-select { max-width:100%; }
+  .tab-bar { flex-wrap:wrap; }
+  .tab-item { padding:8px 10px; }
+  #cy-money { height:320px !important; }
+  #cy-rel { height:340px !important; }
+  .timeline-container { overflow-x:auto; }
+  #txn-timeline,
+  #infra-timeline { min-width:600px; }
+  #screen-reports .template-area { min-height:180px; }
+  #synthetic-banner { padding:8px 12px; }
+  .tooltip-content { left:0; transform:none; width:min(280px,calc(100vw - 32px)); }
 }
 </style>
 </head>
@@ -206,6 +281,7 @@ table.data-table tr.flagged td { border-left:3px solid var(--risk-critical); }
      ============================================================ -->
 <div id="main">
 <div id="topbar">
+  <button id="menu-toggle" type="button" aria-label="Toggle navigation" onclick="toggleSidebar()">&#9776;</button>
   <div class="search-box">
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
     <input type="text" id="globalSearch" placeholder="Search accounts, UTRs, domains, IPs, phones..." onkeydown="if(event.key==='Enter')handleGlobalSearch()">
@@ -862,8 +938,12 @@ function closeModal(id) { document.getElementById('modal-'+id).classList.remove(
 /* ============================================================
    SECTION 4: NAVIGATION
    ============================================================ */
+function toggleSidebar() {
+  document.body.classList.toggle('sidebar-open');
+}
 document.querySelectorAll('.nav-item').forEach(item => {
   item.addEventListener('click', () => {
+    if(window.innerWidth <= 900) document.body.classList.remove('sidebar-open');
     document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
     document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
     item.classList.add('active');
